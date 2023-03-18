@@ -35,7 +35,7 @@ impl CompositorHandler for HoloState {
         };
 
         //Shell Commits here
-        xdg_shell::handle_commit(&self.space, surface);
+        xdg_shell::handle_commit(&mut self.space, surface);
     }
 }
 

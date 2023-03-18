@@ -10,7 +10,7 @@ use smithay::{
     },
 };
 
-use crate::state::HoloState;
+use crate::{state::HoloState, utils::tiling::bsp_layout};
 
 impl XdgShellHandler for HoloState {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
@@ -41,7 +41,7 @@ impl XdgShellHandler for HoloState {
 }
 
 /// Should be called on `WlSurface::commit`
-pub fn handle_commit(space: &Space<Window>, surface: &WlSurface) -> Option<()> {
+pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<()> {
     let window = space
         .elements()
         .find(|w| w.toplevel().wl_surface() == surface)
@@ -58,7 +58,16 @@ pub fn handle_commit(space: &Space<Window>, surface: &WlSurface) -> Option<()> {
     });
 
     if !initial_configure_sent {
-        window.toplevel().send_configure();
+        let layout = bsp_layout(space);
+        let windows: Vec<_> = space.elements().cloned().collect();
+        for (i, window) in windows.iter().enumerate() {
+            space.map_element(window.clone(), layout[i].loc, false);
+            let xdg_toplevel = window.toplevel();
+            xdg_toplevel.with_pending_state(|state| {
+                state.size = Some(layout[i].size);
+            });
+            xdg_toplevel.send_configure();
+        }
     }
 
     Some(())

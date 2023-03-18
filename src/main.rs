@@ -6,6 +6,7 @@ mod backends;
 mod handlers;
 mod input;
 mod state;
+mod utils;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut event_loop: EventLoop<CalloopData> = EventLoop::try_new()?;
