@@ -38,6 +38,26 @@ impl XdgShellHandler for HoloState {
         }
     }
 
+    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
+        let window = self
+            .space
+            .elements()
+            .find(|w| w.toplevel() == &surface)
+            .cloned()
+            .unwrap();
+        self.space.unmap_elem(&window);
+        let layout = bsp_layout(&self.space);
+        let windows: Vec<_> = self.space.elements().cloned().collect();
+        for (i, window) in windows.iter().enumerate() {
+            self.space.map_element(window.clone(), layout[i].loc, false);
+            let xdg_toplevel = window.toplevel();
+            xdg_toplevel.with_pending_state(|state| {
+                state.size = Some(layout[i].size);
+            });
+            xdg_toplevel.send_configure();
+        }
+    }
+
     fn new_popup(
         &mut self,
         _surface: smithay::wayland::shell::xdg::PopupSurface,
