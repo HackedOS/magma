@@ -3,8 +3,13 @@ use smithay::utils::{Logical, Point, Rectangle, Size};
 use super::workspace::Workspace;
 
 pub fn bsp_layout(workspace: &Workspace) -> Vec<Rectangle<i32, Logical>> {
-    // let output = workspace.outputs().next().unwrap().current_mode().unwrap().size;
-    let output: Size<i32, Logical> = Size::from((1920, 1080));
+    let output = workspace
+        .outputs()
+        .next()
+        .unwrap()
+        .current_mode()
+        .unwrap()
+        .size;
     let mut current_geometry: Rectangle<i32, Logical> = Rectangle {
         loc: Point::from((0, 0)),
         size: Size::from((output.w, output.h)),
