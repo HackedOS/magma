@@ -1,12 +1,18 @@
 use std::sync::Mutex;
 
 use smithay::{
-    delegate_xdg_shell,
+    delegate_xdg_decoration, delegate_xdg_shell,
     desktop::{Space, Window},
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
+    reexports::{
+        wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode,
+        wayland_server::protocol::wl_surface::WlSurface,
+    },
     wayland::{
         compositor::with_states,
-        shell::xdg::{XdgShellHandler, XdgShellState, XdgToplevelSurfaceRoleAttributes},
+        shell::xdg::{
+            decoration::XdgDecorationHandler, ToplevelSurface, XdgShellHandler, XdgShellState,
+            XdgToplevelSurfaceRoleAttributes,
+        },
     },
 };
 
@@ -24,17 +30,17 @@ impl XdgShellHandler for HoloState {
 
     fn new_popup(
         &mut self,
-        surface: smithay::wayland::shell::xdg::PopupSurface,
-        positioner: smithay::wayland::shell::xdg::PositionerState,
+        _surface: smithay::wayland::shell::xdg::PopupSurface,
+        _positioner: smithay::wayland::shell::xdg::PositionerState,
     ) {
         todo!()
     }
 
     fn grab(
         &mut self,
-        surface: smithay::wayland::shell::xdg::PopupSurface,
-        seat: smithay::reexports::wayland_server::protocol::wl_seat::WlSeat,
-        serial: smithay::utils::Serial,
+        _surface: smithay::wayland::shell::xdg::PopupSurface,
+        _seat: smithay::reexports::wayland_server::protocol::wl_seat::WlSeat,
+        _serial: smithay::utils::Serial,
     ) {
         todo!()
     }
@@ -42,7 +48,7 @@ impl XdgShellHandler for HoloState {
 
 /// Should be called on `WlSurface::commit`
 pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<()> {
-    let window = space
+    let _window = space
         .elements()
         .find(|w| w.toplevel().wl_surface() == surface)
         .cloned()?;
@@ -74,3 +80,20 @@ pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<(
 }
 
 delegate_xdg_shell!(HoloState);
+
+// Disable decorations
+impl XdgDecorationHandler for HoloState {
+    fn new_decoration(&mut self, toplevel: ToplevelSurface) {
+        toplevel.with_pending_state(|state| {
+            // Advertise server side decoration
+            state.decoration_mode = Some(Mode::ServerSide);
+        });
+        toplevel.send_configure();
+    }
+
+    fn request_mode(&mut self, _toplevel: ToplevelSurface, _mode: Mode) {}
+
+    fn unset_mode(&mut self, _toplevel: ToplevelSurface) {}
+}
+
+delegate_xdg_decoration!(HoloState);
