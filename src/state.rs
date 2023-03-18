@@ -1,7 +1,7 @@
 use std::{ffi::OsString, os::fd::AsRawFd, sync::Arc};
 
 use smithay::{
-    desktop::{Space, Window, WindowSurfaceType},
+    desktop::WindowSurfaceType,
     input::{pointer::PointerHandle, Seat, SeatState},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},

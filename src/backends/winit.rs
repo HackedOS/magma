@@ -14,7 +14,7 @@ use smithay::{
     utils::{Rectangle, Transform},
 };
 
-use crate::{utils::workspace, CalloopData, HoloState};
+use crate::{CalloopData, HoloState};
 
 pub fn init_winit(
     event_loop: &mut EventLoop<CalloopData>,

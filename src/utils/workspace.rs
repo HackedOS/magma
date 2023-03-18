@@ -13,11 +13,6 @@ pub struct HoloWindow {
     location: Point<i32, Logical>,
 }
 impl HoloWindow {
-    fn geometry(&self) -> Rectangle<i32, Logical> {
-        let mut geo = self.window.geometry();
-        geo.loc = self.location;
-        geo
-    }
     fn bbox(&self) -> Rectangle<i32, Logical> {
         let mut bbox = self.window.bbox();
         bbox.loc += self.location - self.window.geometry().loc;
@@ -84,7 +79,7 @@ impl Workspace {
         self.outputs.push(output);
     }
 
-    pub fn remove_output(&mut self, output: &Output) {
+    pub fn _remove_output(&mut self, output: &Output) {
         self.outputs.retain(|o| o != output);
     }
 
