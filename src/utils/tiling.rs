@@ -4,9 +4,10 @@ use smithay::{
 };
 
 pub fn bsp_layout(space: &Space<Window>) -> Vec<Rectangle<i32, Logical>> {
+    let output = space.outputs().next().unwrap().current_mode().unwrap().size;
     let mut current_geometry: Rectangle<i32, Logical> = Rectangle {
         loc: Point::from((0, 0)),
-        size: Size::from((1920, 1080)),
+        size: Size::from((output.w, output.h)),
     };
     let mut layout: Vec<Rectangle<i32, Logical>> = Vec::new();
     let noofwindows = space.elements().count();
@@ -14,9 +15,9 @@ pub fn bsp_layout(space: &Space<Window>) -> Vec<Rectangle<i32, Logical>> {
     for i in 0..noofwindows {
         let loc;
         if tileside {
-            loc = Point::from((1920 - current_geometry.size.w, current_geometry.loc.y))
+            loc = Point::from((output.w - current_geometry.size.w, current_geometry.loc.y))
         } else {
-            loc = Point::from((current_geometry.loc.x, 1080 - current_geometry.size.h))
+            loc = Point::from((current_geometry.loc.x, output.h - current_geometry.size.h))
         }
         tileside = !tileside;
         if noofwindows > i + 1 {
