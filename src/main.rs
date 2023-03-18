@@ -3,6 +3,7 @@ use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 use state::{CalloopData, HoloState};
 
 mod backends;
+mod config;
 mod handlers;
 mod input;
 mod state;

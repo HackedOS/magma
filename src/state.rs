@@ -22,7 +22,7 @@ use smithay::{
     },
 };
 
-use crate::utils::workspace::Workspace;
+use crate::{config::Config, utils::workspace::Workspace};
 
 pub struct CalloopData {
     pub state: HoloState,
@@ -30,6 +30,8 @@ pub struct CalloopData {
 }
 
 pub struct HoloState {
+    pub config: Config,
+
     pub start_time: std::time::Instant,
     pub socket_name: OsString,
     pub workspace: Workspace,
@@ -50,6 +52,10 @@ pub struct HoloState {
 impl HoloState {
     pub fn new(event_loop: &mut EventLoop<CalloopData>, display: &mut Display<HoloState>) -> Self {
         let start_time = std::time::Instant::now();
+
+        let config = Config::load();
+
+        println!("Config: {:#?}", config);
 
         let dh = display.handle();
 
@@ -73,6 +79,7 @@ impl HoloState {
         let loop_signal = event_loop.get_signal();
 
         Self {
+            config,
             start_time,
             socket_name,
             workspace,
