@@ -26,6 +26,16 @@ impl XdgShellHandler for HoloState {
     fn new_toplevel(&mut self, surface: smithay::wayland::shell::xdg::ToplevelSurface) {
         let window = Window::new(surface);
         self.space.map_element(window, (0, 0), true);
+        let layout = bsp_layout(&self.space);
+        let windows: Vec<_> = self.space.elements().cloned().collect();
+        for (i, window) in windows.iter().enumerate() {
+            self.space.map_element(window.clone(), layout[i].loc, false);
+            let xdg_toplevel = window.toplevel();
+            xdg_toplevel.with_pending_state(|state| {
+                state.size = Some(layout[i].size);
+            });
+            xdg_toplevel.send_configure();
+        }
     }
 
     fn new_popup(
@@ -48,7 +58,7 @@ impl XdgShellHandler for HoloState {
 
 /// Should be called on `WlSurface::commit`
 pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<()> {
-    let _window = space
+    let window = space
         .elements()
         .find(|w| w.toplevel().wl_surface() == surface)
         .cloned()?;
@@ -64,16 +74,7 @@ pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<(
     });
 
     if !initial_configure_sent {
-        let layout = bsp_layout(space);
-        let windows: Vec<_> = space.elements().cloned().collect();
-        for (i, window) in windows.iter().enumerate() {
-            space.map_element(window.clone(), layout[i].loc, false);
-            let xdg_toplevel = window.toplevel();
-            xdg_toplevel.with_pending_state(|state| {
-                state.size = Some(layout[i].size);
-            });
-            xdg_toplevel.send_configure();
-        }
+        window.toplevel().send_configure();
     }
 
     Some(())
