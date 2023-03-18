@@ -1,16 +1,16 @@
-use smithay::{
-    desktop::{Space, Window},
-    utils::{Logical, Point, Rectangle, Size},
-};
+use smithay::utils::{Logical, Point, Rectangle, Size};
 
-pub fn bsp_layout(space: &Space<Window>) -> Vec<Rectangle<i32, Logical>> {
-    let output = space.outputs().next().unwrap().current_mode().unwrap().size;
+use super::workspace::Workspace;
+
+pub fn bsp_layout(workspace: &Workspace) -> Vec<Rectangle<i32, Logical>> {
+    // let output = workspace.outputs().next().unwrap().current_mode().unwrap().size;
+    let output: Size<i32, Logical> = Size::from((1920, 1080));
     let mut current_geometry: Rectangle<i32, Logical> = Rectangle {
         loc: Point::from((0, 0)),
         size: Size::from((output.w, output.h)),
     };
     let mut layout: Vec<Rectangle<i32, Logical>> = Vec::new();
-    let noofwindows = space.elements().count();
+    let noofwindows = workspace.windows().count();
     let mut tileside = false;
     for i in 0..noofwindows {
         let loc;

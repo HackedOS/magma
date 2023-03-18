@@ -2,12 +2,10 @@ use std::time::Duration;
 
 use smithay::{
     backend::{
-        renderer::{
-            damage::DamageTrackedRenderer, element::surface::WaylandSurfaceRenderElement,
-            gles2::Gles2Renderer,
-        },
+        renderer::{damage::DamageTrackedRenderer, gles2::Gles2Renderer},
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
+    desktop::space::SpaceElement,
     output::{Mode, Output, PhysicalProperties, Subpixel},
     reexports::calloop::{
         timer::{TimeoutAction, Timer},
@@ -16,7 +14,7 @@ use smithay::{
     utils::{Rectangle, Transform},
 };
 
-use crate::{CalloopData, HoloState};
+use crate::{utils::workspace, CalloopData, HoloState};
 
 pub fn init_winit(
     event_loop: &mut EventLoop<CalloopData>,
@@ -50,7 +48,7 @@ pub fn init_winit(
     );
     output.set_preferred(mode);
 
-    state.space.map_output(&output, (0, 0));
+    state.workspace.add_output(output.clone());
 
     let mut damage_tracked_renderer = DamageTrackedRenderer::from_output(&output);
 
@@ -119,18 +117,18 @@ pub fn winit_dispatch(
     let damage = Rectangle::from_loc_and_size((0, 0), size);
 
     backend.bind()?;
-    smithay::desktop::space::render_output::<_, WaylandSurfaceRenderElement<Gles2Renderer>, _, _>(
-        output,
+
+    let renderelements = state.workspace.render_elements(backend.renderer());
+    damage_tracked_renderer.render_output(
         backend.renderer(),
         0,
-        [&state.space],
-        &[],
-        damage_tracked_renderer,
+        &renderelements,
         [0.1, 0.1, 0.1, 1.0],
     )?;
+
     backend.submit(Some(&[damage]))?;
 
-    state.space.elements().for_each(|window| {
+    state.workspace.windows().for_each(|window| {
         window.send_frame(
             output,
             state.start_time.elapsed(),
@@ -139,7 +137,7 @@ pub fn winit_dispatch(
         )
     });
 
-    state.space.refresh();
+    state.workspace.windows().for_each(|e| e.refresh());
     display.flush_clients()?;
 
     Ok(())

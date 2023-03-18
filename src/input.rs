@@ -30,9 +30,9 @@ impl HoloState {
                 );
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output = self.space.outputs().next().unwrap();
+                let output = self.workspace.outputs().next().unwrap();
 
-                let output_geo = self.space.output_geometry(output).unwrap();
+                let output_geo = self.workspace.output_geometry(output).unwrap();
 
                 let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
@@ -64,21 +64,20 @@ impl HoloState {
 
                 if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
                     if let Some((window, _loc)) = self
-                        .space
-                        .element_under(pointer.current_location())
+                        .workspace
+                        .window_under(pointer.current_location())
                         .map(|(w, l)| (w.clone(), l))
                     {
-                        self.space.raise_element(&window, true);
                         keyboard.set_focus(
                             self,
                             Some(window.toplevel().wl_surface().clone()),
                             serial,
                         );
-                        self.space.elements().for_each(|window| {
+                        self.workspace.windows().for_each(|window| {
                             window.toplevel().send_configure();
                         });
                     } else {
-                        self.space.elements().for_each(|window| {
+                        self.workspace.windows().for_each(|window| {
                             window.set_activated(false);
                             window.toplevel().send_configure();
                         });
