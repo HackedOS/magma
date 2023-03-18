@@ -10,6 +10,7 @@ use smithay::{
 use crate::state::HoloState;
 
 mod compositor;
+mod input;
 mod xdg_shell;
 
 impl SeatHandler for HoloState {
