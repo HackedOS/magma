@@ -1,13 +1,12 @@
 use smithay::{
     backend::input::{
-        AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent,
-        KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
+        AbsolutePositionEvent, Axis, AxisSource, Event, InputBackend, InputEvent, KeyState,
+        KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
     },
     input::{
         keyboard::FilterResult,
         pointer::{AxisFrame, ButtonEvent, MotionEvent},
     },
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
     utils::SERIAL_COUNTER,
 };
 
@@ -20,7 +19,7 @@ impl HoloState {
                 let serial = SERIAL_COUNTER.next_serial();
                 let time = Event::time_msec(&event);
 
-                if let Some(Action) = self.seat.get_keyboard().unwrap().input(
+                if let Some(action) = self.seat.get_keyboard().unwrap().input(
                     self,
                     event.key_code(),
                     event.state(),
@@ -38,7 +37,7 @@ impl HoloState {
                         FilterResult::Forward
                     },
                 ) {
-                    self.handle_action(Action);
+                    self.handle_action(action);
                 };
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
@@ -56,11 +55,8 @@ impl HoloState {
 
                 let keyboard = self.seat.get_keyboard().unwrap();
 
-                match under.clone() {
-                    Some(d) => {
-                        keyboard.set_focus(self, Some(d.0), serial);
-                    }
-                    None => {}
+                if let Some(d) = under.clone() {
+                    keyboard.set_focus(self, Some(d.0), serial);
                 }
 
                 pointer.motion(

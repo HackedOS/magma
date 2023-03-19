@@ -5,13 +5,14 @@ impl HoloState {
         match action {
             Action::Terminate => self.loop_signal.stop(),
             Action::Debug => todo!(),
-            Action::Close => match self
-                .workspace
-                .window_under(self.seat.get_pointer().unwrap().current_location())
-            {
-                Some(d) => d.0.toplevel().send_close(),
-                None => {}
-            },
+            Action::Close => {
+                if let Some(d) = self
+                    .workspace
+                    .window_under(self.seat.get_pointer().unwrap().current_location())
+                {
+                    d.0.toplevel().send_close()
+                }
+            }
 
             Action::Workspace(_) => todo!(),
             Action::ToggleWindowFloating => todo!(),
