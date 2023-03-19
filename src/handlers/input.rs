@@ -3,9 +3,16 @@ use crate::{config::Action, state::HoloState};
 impl HoloState {
     pub fn handle_action(&self, action: Action) {
         match action {
-            Action::Terminate => todo!(),
+            Action::Terminate => self.loop_signal.stop(),
             Action::Debug => todo!(),
-            Action::Close => todo!(),
+            Action::Close => match self
+                .workspace
+                .window_under(self.seat.get_pointer().unwrap().current_location())
+            {
+                Some(d) => d.0.toplevel().send_close(),
+                None => {}
+            },
+
             Action::Workspace(_) => todo!(),
             Action::ToggleWindowFloating => todo!(),
             Action::Spawn(command) => {

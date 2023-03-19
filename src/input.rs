@@ -54,6 +54,15 @@ impl HoloState {
 
                 let under = self.surface_under_pointer(&pointer);
 
+                let keyboard = self.seat.get_keyboard().unwrap();
+
+                match under.clone() {
+                    Some(d) => {
+                        keyboard.set_focus(self, Some(d.0), serial);
+                    }
+                    None => {}
+                }
+
                 pointer.motion(
                     self,
                     under,
@@ -66,36 +75,12 @@ impl HoloState {
             }
             InputEvent::PointerButton { event, .. } => {
                 let pointer = self.seat.get_pointer().unwrap();
-                let keyboard = self.seat.get_keyboard().unwrap();
 
                 let serial = SERIAL_COUNTER.next_serial();
 
                 let button = event.button_code();
 
                 let button_state = event.state();
-
-                if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
-                    if let Some((window, _loc)) = self
-                        .workspace
-                        .window_under(pointer.current_location())
-                        .map(|(w, l)| (w.clone(), l))
-                    {
-                        keyboard.set_focus(
-                            self,
-                            Some(window.toplevel().wl_surface().clone()),
-                            serial,
-                        );
-                        self.workspace.windows().for_each(|window| {
-                            window.toplevel().send_configure();
-                        });
-                    } else {
-                        self.workspace.windows().for_each(|window| {
-                            window.set_activated(false);
-                            window.toplevel().send_configure();
-                        });
-                        keyboard.set_focus(self, Option::<WlSurface>::None, serial);
-                    }
-                };
 
                 pointer.button(
                     self,
