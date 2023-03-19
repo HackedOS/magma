@@ -162,4 +162,8 @@ impl Workspaces {
             .iter_mut()
             .find(|w| w.contains_window(window))
     }
+
+    pub fn activate(&mut self, id: u8) {
+        self.current = id;
+    }
 }

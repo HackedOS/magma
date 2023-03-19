@@ -15,7 +15,7 @@ impl HoloState {
                 }
             }
 
-            Action::Workspace(_) => todo!(),
+            Action::Workspace(id) => self.workspaces.activate(id),
             Action::ToggleWindowFloating => todo!(),
             Action::Spawn(command) => {
                 if let Err(err) = std::process::Command::new("/bin/sh")
