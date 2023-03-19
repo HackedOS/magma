@@ -3,7 +3,7 @@ use crate::{config::Action, state::HoloState};
 impl HoloState {
     pub fn handle_action(&mut self, action: Action) {
         match action {
-            Action::Terminate => self.loop_signal.stop(),
+            Action::Quit => self.loop_signal.stop(),
             Action::Debug => todo!(),
             Action::Close => {
                 if let Some(d) = self

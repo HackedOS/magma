@@ -140,7 +140,7 @@ impl KeyPattern {
 
 #[derive(Debug, Deserialize, Clone, PartialEq, Eq)]
 pub enum Action {
-    Terminate,
+    Quit,
     Debug,
     Close,
 
