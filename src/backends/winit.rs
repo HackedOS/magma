@@ -48,7 +48,10 @@ pub fn init_winit(
     );
     output.set_preferred(mode);
 
-    state.workspace.add_output(output.clone());
+    // map output to every workspace
+    for workspace in state.workspaces.iter() {
+        workspace.add_output(output.clone());
+    }
 
     let mut damage_tracked_renderer = DamageTrackedRenderer::from_output(&output);
 
@@ -118,7 +121,10 @@ pub fn winit_dispatch(
 
     backend.bind()?;
 
-    let renderelements = state.workspace.render_elements(backend.renderer());
+    let renderelements = state
+        .workspaces
+        .current()
+        .render_elements(backend.renderer());
     damage_tracked_renderer.render_output(
         backend.renderer(),
         0,
@@ -128,7 +134,7 @@ pub fn winit_dispatch(
 
     backend.submit(Some(&[damage]))?;
 
-    state.workspace.windows().for_each(|window| {
+    state.workspaces.current().windows().for_each(|window| {
         window.send_frame(
             output,
             state.start_time.elapsed(),
@@ -137,7 +143,7 @@ pub fn winit_dispatch(
         )
     });
 
-    state.workspace.windows().for_each(|e| e.refresh());
+    state.workspaces.all_windows().for_each(|e| e.refresh());
     display.flush_clients()?;
 
     Ok(())

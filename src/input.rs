@@ -41,9 +41,9 @@ impl HoloState {
                 };
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output = self.workspace.outputs().next().unwrap();
+                let output = self.workspaces.current().outputs().next().unwrap().clone();
 
-                let output_geo = self.workspace.output_geometry(output).unwrap();
+                let output_geo = self.workspaces.current().output_geometry(&output).unwrap();
 
                 let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 

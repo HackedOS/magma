@@ -18,7 +18,7 @@ use smithay::{
 
 use crate::{
     state::HoloState,
-    utils::{tiling::bsp_layout, workspace::Workspace},
+    utils::{tiling::bsp_layout, workspace::Workspaces},
 };
 
 impl XdgShellHandler for HoloState {
@@ -28,11 +28,13 @@ impl XdgShellHandler for HoloState {
 
     fn new_toplevel(&mut self, surface: smithay::wayland::shell::xdg::ToplevelSurface) {
         let window = Window::new(surface);
-        self.workspace.add_window(window, (0, 0));
-        let layout = bsp_layout(&self.workspace);
-        let windows: Vec<_> = self.workspace.windows().cloned().collect();
+        self.workspaces.current().add_window(window, (0, 0));
+        let layout = bsp_layout(&self.workspaces.current());
+        let windows: Vec<_> = self.workspaces.current().windows().cloned().collect();
         for (i, window) in windows.iter().enumerate() {
-            self.workspace.add_window(window.clone(), layout[i].loc);
+            self.workspaces
+                .current()
+                .add_window(window.clone(), layout[i].loc);
             let xdg_toplevel = window.toplevel();
             xdg_toplevel.with_pending_state(|state| {
                 state.size = Some(layout[i].size);
@@ -43,16 +45,18 @@ impl XdgShellHandler for HoloState {
 
     fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
         let window = self
-            .workspace
-            .windows()
+            .workspaces
+            .all_windows()
             .find(|w| w.toplevel() == &surface)
             .cloned()
             .unwrap();
-        self.workspace.remove_window(&window);
-        let layout = bsp_layout(&self.workspace);
-        let windows: Vec<_> = self.workspace.windows().cloned().collect();
+
+        let workspace = self.workspaces.workspace_from_window(&window).unwrap();
+        workspace.remove_window(&window);
+        let layout = bsp_layout(&workspace);
+        let windows: Vec<_> = workspace.windows().cloned().collect();
         for (i, window) in windows.iter().enumerate() {
-            self.workspace.add_window(window.clone(), layout[i].loc);
+            workspace.add_window(window.clone(), layout[i].loc);
             let xdg_toplevel = window.toplevel();
             xdg_toplevel.with_pending_state(|state| {
                 state.size = Some(layout[i].size);
@@ -80,9 +84,9 @@ impl XdgShellHandler for HoloState {
 }
 
 /// Should be called on `WlSurface::commit`
-pub fn handle_commit(workspace: &mut Workspace, surface: &WlSurface) -> Option<()> {
-    let window = workspace
-        .windows()
+pub fn handle_commit(workspaces: &mut Workspaces, surface: &WlSurface) -> Option<()> {
+    let window = workspaces
+        .all_windows()
         .find(|w| w.toplevel().wl_surface() == surface)
         .cloned()?;
 

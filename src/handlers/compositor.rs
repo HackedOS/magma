@@ -26,8 +26,8 @@ impl CompositorHandler for HoloState {
                 root = parent;
             }
             if let Some(window) = self
-                .workspace
-                .windows()
+                .workspaces
+                .all_windows()
                 .find(|w| w.toplevel().wl_surface() == &root)
             {
                 window.on_commit();
@@ -35,7 +35,7 @@ impl CompositorHandler for HoloState {
         };
 
         //Shell Commits here
-        xdg_shell::handle_commit(&mut self.workspace, surface);
+        xdg_shell::handle_commit(&mut self.workspaces, surface);
     }
 }
 

@@ -11,6 +11,7 @@ use smithay::{
 pub struct HoloWindow {
     window: Window,
     location: Point<i32, Logical>,
+    workspace: u8,
 }
 impl HoloWindow {
     fn bbox(&self) -> Rectangle<i32, Logical> {
@@ -26,13 +27,15 @@ impl HoloWindow {
 pub struct Workspace {
     windows: Vec<HoloWindow>,
     outputs: Vec<Output>,
+    id: u8,
 }
 
 impl Workspace {
-    pub fn new() -> Self {
+    pub fn new(id: u8) -> Self {
         Workspace {
             windows: Vec::new(),
             outputs: Vec::new(),
+            id,
         }
     }
 
@@ -49,6 +52,7 @@ impl Workspace {
         self.windows.push(HoloWindow {
             window: window,
             location: location.into(),
+            workspace: self.id,
         });
     }
 
@@ -121,5 +125,41 @@ impl Workspace {
                     None
                 }
             })
+    }
+
+    pub fn contains_window(&self, window: &Window) -> bool {
+        self.windows.iter().any(|w| &w.window == window)
+    }
+}
+
+pub struct Workspaces {
+    workspaces: Vec<Workspace>,
+    current: u8,
+}
+
+impl Workspaces {
+    pub fn new(workspaceamount: u8) -> Self {
+        Workspaces {
+            workspaces: (0..workspaceamount).map(|id| Workspace::new(id)).collect(),
+            current: 0,
+        }
+    }
+
+    pub fn iter(&mut self) -> impl Iterator<Item = &mut Workspace> {
+        self.workspaces.iter_mut()
+    }
+
+    pub fn current(&mut self) -> &mut Workspace {
+        &mut self.workspaces[self.current as usize]
+    }
+
+    pub fn all_windows(&self) -> impl Iterator<Item = &Window> {
+        self.workspaces.iter().flat_map(|w| w.windows())
+    }
+
+    pub fn workspace_from_window(&mut self, window: &Window) -> Option<&mut Workspace> {
+        self.workspaces
+            .iter_mut()
+            .find(|w| w.contains_window(window))
     }
 }

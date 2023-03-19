@@ -22,7 +22,7 @@ use smithay::{
     },
 };
 
-use crate::{config::Config, utils::workspace::Workspace};
+use crate::{config::Config, utils::workspace::Workspaces};
 
 pub struct CalloopData {
     pub state: HoloState,
@@ -34,7 +34,7 @@ pub struct HoloState {
 
     pub start_time: std::time::Instant,
     pub socket_name: OsString,
-    pub workspace: Workspace,
+    pub workspaces: Workspaces,
     pub loop_signal: LoopSignal,
 
     //Smithay State
@@ -75,14 +75,14 @@ impl HoloState {
         seat.add_pointer();
 
         let socket_name = Self::init_wayland_listener(display, event_loop);
-        let workspace = Workspace::new();
+        let workspaces = Workspaces::new(config.workspaces);
         let loop_signal = event_loop.get_signal();
 
         Self {
             config,
             start_time,
             socket_name,
-            workspace,
+            workspaces,
             loop_signal,
             compositor_state,
             xdg_shell_state,
@@ -141,11 +141,12 @@ impl HoloState {
     }
 
     pub fn surface_under_pointer(
-        &self,
+        &mut self,
         pointer: &PointerHandle<Self>,
     ) -> Option<(WlSurface, Point<i32, Logical>)> {
         let pos = pointer.current_location();
-        self.workspace
+        self.workspaces
+            .current()
             .window_under(pos)
             .and_then(|(window, location)| {
                 window

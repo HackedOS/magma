@@ -1,13 +1,14 @@
 use crate::{config::Action, state::HoloState};
 
 impl HoloState {
-    pub fn handle_action(&self, action: Action) {
+    pub fn handle_action(&mut self, action: Action) {
         match action {
             Action::Terminate => self.loop_signal.stop(),
             Action::Debug => todo!(),
             Action::Close => {
                 if let Some(d) = self
-                    .workspace
+                    .workspaces
+                    .current()
                     .window_under(self.seat.get_pointer().unwrap().current_location())
                 {
                     d.0.toplevel().send_close()
