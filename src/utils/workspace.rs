@@ -11,7 +11,6 @@ use smithay::{
 pub struct HoloWindow {
     window: Window,
     location: Point<i32, Logical>,
-    workspace: u8,
 }
 impl HoloWindow {
     fn bbox(&self) -> Rectangle<i32, Logical> {
@@ -52,7 +51,6 @@ impl Workspace {
         self.windows.push(HoloWindow {
             window: window,
             location: location.into(),
-            workspace: self.id,
         });
     }
 
