@@ -1,17 +1,8 @@
-use smithay::{
-    desktop::Window,
-    utils::{Logical, Point, Rectangle, Size},
-};
+use smithay::utils::{Logical, Point, Rectangle, Size};
 
 use super::workspace::Workspace;
 
-pub enum WindowLayoutEvent {
-    Added,
-    Removed,
-    Resized,
-}
-
-pub fn bsp_layout(workspace: &mut Workspace, event: WindowLayoutEvent, window: Window) {
+pub fn bsp_layout(workspace: &Workspace) -> Vec<Rectangle<i32, Logical>> {
     let output = workspace
         .outputs()
         .next()
@@ -19,50 +10,39 @@ pub fn bsp_layout(workspace: &mut Workspace, event: WindowLayoutEvent, window: W
         .current_mode()
         .unwrap()
         .size;
-
-    match event {
-        WindowLayoutEvent::Added => {
-            let tileside = if workspace.windows().count() % 2 == 0 {
-                true
+    let mut current_geometry: Rectangle<i32, Logical> = Rectangle {
+        loc: Point::from((0, 0)),
+        size: Size::from((output.w, output.h)),
+    };
+    let mut layout: Vec<Rectangle<i32, Logical>> = Vec::new();
+    let noofwindows = workspace.windows().count();
+    let mut tileside = false;
+    for i in 0..noofwindows {
+        let loc;
+        if tileside {
+            loc = Point::from((output.w - current_geometry.size.w, current_geometry.loc.y))
+        } else {
+            loc = Point::from((current_geometry.loc.x, output.h - current_geometry.size.h))
+        }
+        tileside = !tileside;
+        if noofwindows > i + 1 {
+            let size;
+            if tileside {
+                size = Size::from((current_geometry.size.w / 2, current_geometry.size.h));
             } else {
-                false
+                size = Size::from((current_geometry.size.w, current_geometry.size.h / 2));
+            }
+            current_geometry = Rectangle {
+                loc: loc,
+                size: size,
             };
-            let mut geometry;
-            if let Some(rec) = workspace.last_geometry() {
-                if tileside {
-                    let loc = Point::from((output.w - rec.size.w, rec.loc.y));
-                    geometry = Rectangle {
-                        size: Size::from((rec.size.w, rec.size.h / 2)),
-                        loc: loc,
-                    };
-                } else {
-                    let loc = Point::from((rec.loc.x, output.h - rec.size.h));
-                    geometry = Rectangle {
-                        size: Size::from((rec.size.w / 2, rec.size.h)),
-                        loc: loc,
-                    };
-                }
-            } else {
-                geometry = Rectangle {
-                    loc: Point::from((0, 0)),
-                    size: output.to_logical(1),
-                };
-            }
-            if let Some(last) = workspace.windows().last() {
-                workspace.add_window(last.clone(), geometry)
-            }
-            if let Some(rec) = workspace.last_geometry() {
-                if !tileside {
-                    geometry.loc = Point::from((output.w - rec.size.w, rec.loc.y));
-                } else {
-                    geometry.loc = Point::from((rec.loc.x, output.h - rec.size.h));
-                }
-            }
-            workspace.add_window(window, geometry);
+        } else {
+            current_geometry = Rectangle {
+                loc: loc,
+                size: current_geometry.size,
+            };
         }
-        WindowLayoutEvent::Removed => {
-            workspace.remove_window(&window);
-        }
-        WindowLayoutEvent::Resized => todo!(),
+        layout.push(current_geometry)
     }
+    layout
 }

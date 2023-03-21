@@ -18,10 +18,7 @@ use smithay::{
 
 use crate::{
     state::HoloState,
-    utils::{
-        tiling::{bsp_layout, WindowLayoutEvent},
-        workspace::{self, Workspaces},
-    },
+    utils::{tiling::bsp_layout, workspace::Workspaces},
 };
 
 impl XdgShellHandler for HoloState {
@@ -31,19 +28,16 @@ impl XdgShellHandler for HoloState {
 
     fn new_toplevel(&mut self, surface: smithay::wayland::shell::xdg::ToplevelSurface) {
         let window = Window::new(surface);
-        bsp_layout(
-            &mut self.workspaces.current(),
-            WindowLayoutEvent::Added,
-            window.clone(),
-        );
-
-        let workspace = self.workspaces.current();
-        let windows: Vec<_> = workspace.windows().cloned().collect();
-        for window in windows.iter() {
-            let geometry = workspace.geometry(&window);
+        self.workspaces.current().add_window(window, (0, 0));
+        let layout = bsp_layout(&self.workspaces.current());
+        let windows: Vec<_> = self.workspaces.current().windows().cloned().collect();
+        for (i, window) in windows.iter().enumerate() {
+            self.workspaces
+                .current()
+                .add_window(window.clone(), layout[i].loc);
             let xdg_toplevel = window.toplevel();
             xdg_toplevel.with_pending_state(|state| {
-                state.size = Some(geometry.size);
+                state.size = Some(layout[i].size);
             });
             xdg_toplevel.send_configure();
         }
@@ -58,13 +52,14 @@ impl XdgShellHandler for HoloState {
             .unwrap();
 
         let workspace = self.workspaces.workspace_from_window(&window).unwrap();
-        bsp_layout(workspace, WindowLayoutEvent::Removed, window.clone());
+        workspace.remove_window(&window);
+        let layout = bsp_layout(&workspace);
         let windows: Vec<_> = workspace.windows().cloned().collect();
-        for window in windows.iter() {
-            let geometry = workspace.geometry(&window);
+        for (i, window) in windows.iter().enumerate() {
+            workspace.add_window(window.clone(), layout[i].loc);
             let xdg_toplevel = window.toplevel();
             xdg_toplevel.with_pending_state(|state| {
-                state.size = Some(geometry.size);
+                state.size = Some(layout[i].size);
             });
             xdg_toplevel.send_configure();
         }

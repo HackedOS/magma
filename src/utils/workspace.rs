@@ -5,22 +5,22 @@ use smithay::{
     },
     desktop::{space::SpaceElement, Window},
     output::Output,
-    utils::{Logical, Point, Rectangle, Scale, Size, Transform},
+    utils::{Logical, Point, Rectangle, Scale, Transform},
 };
 
 pub struct HoloWindow {
     window: Window,
-    rectangle: Rectangle<i32, Logical>,
+    location: Point<i32, Logical>,
 }
 impl HoloWindow {
     fn bbox(&self) -> Rectangle<i32, Logical> {
         let mut bbox = self.window.bbox();
-        bbox.loc += self.rectangle.loc - self.window.geometry().loc;
+        bbox.loc += self.location - self.window.geometry().loc;
         bbox
     }
 
     fn render_location(&self) -> Point<i32, Logical> {
-        self.rectangle.loc - self.window.geometry().loc
+        self.location - self.window.geometry().loc
     }
 }
 pub struct Workspace {
@@ -42,62 +42,20 @@ impl Workspace {
         self.windows.iter().map(|w| &w.window)
     }
 
-    pub fn add_window(&mut self, window: Window, geometry: Rectangle<i32, Logical>) {
+    pub fn add_window<P>(&mut self, window: Window, location: P)
+    where
+        P: Into<Point<i32, Logical>>,
+    {
         // add window to vec and remap if exists
-        if let Some(w) = self.windows.iter_mut().find(|w| w.window == window) {
-            w.rectangle = geometry;
-        } else {
-            self.windows.push(HoloWindow {
-                window,
-                rectangle: geometry,
-            });
-        }
+        self.windows.retain(|w| &w.window != &window);
+        self.windows.push(HoloWindow {
+            window: window,
+            location: location.into(),
+        });
     }
 
-    pub fn remove_window(&mut self, window: &Window) -> usize {
-        // remove window from vec and return index
-        let index = self
-            .windows
-            .iter()
-            .position(|w| &w.window == window)
-            .unwrap();
-        self.windows.remove(index);
-        index
-    }
-
-    pub fn geometry_from_index(&self, index: usize) -> Option<Rectangle<i32, Logical>> {
-        //return rectangle of given window
-        if let Some(w) = self.windows.get(index) {
-            Some(w.rectangle)
-        } else {
-            None
-        }
-    }
-
-    pub fn geometry(&self, window: &Window) -> Rectangle<i32, Logical> {
-        //return rectangle of given window
-        self.windows
-            .iter()
-            .find(|w| &w.window == window)
-            .unwrap()
-            .rectangle
-    }
-
-    pub fn window_from_index(&self, index: usize) -> Option<&Window> {
-        //return window from index
-        if let Some(w) = self.windows.get(index) {
-            Some(&w.window)
-        } else {
-            None
-        }
-    }
-
-    pub fn last_geometry(&self) -> Option<Rectangle<i32, Logical>> {
-        if let Some(w) = self.windows.last() {
-            Some(w.rectangle)
-        } else {
-            None
-        }
+    pub fn remove_window(&mut self, window: &Window) {
+        self.windows.retain(|w| &w.window != window);
     }
 
     pub fn render_elements(
@@ -108,7 +66,7 @@ impl Workspace {
         for element in &self.windows {
             render_elements.append(&mut element.window.render_elements(
                 renderer,
-                (element.rectangle.loc.x, element.rectangle.loc.y).into(),
+                (element.location.x, element.location.y).into(),
                 Scale::from(1.0),
             ));
         }
