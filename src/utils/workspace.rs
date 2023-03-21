@@ -110,7 +110,6 @@ impl Workspace {
         let point = point.into();
         self.windows
             .iter()
-            .rev()
             .filter(|e| e.bbox().to_f64().contains(point))
             .find_map(|e| {
                 // we need to offset the point to the location where the surface is actually drawn
