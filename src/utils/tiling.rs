@@ -1,8 +1,22 @@
-use smithay::utils::{Logical, Point, Rectangle, Size};
+use std::{cell::RefCell, rc::Rc};
 
-use super::workspace::Workspace;
+use smithay::{
+    desktop::Window,
+    utils::{Point, Rectangle, Size},
+};
 
-pub fn bsp_layout(workspace: &Workspace) -> Vec<Rectangle<i32, Logical>> {
+use super::{
+    binarytree::{HorizontalOrVertical, TiledHoloWindow},
+    workspace::{HoloWindow, Workspace},
+};
+
+pub enum WindowLayoutEvent {
+    Added,
+    Removed,
+    Resized,
+}
+
+pub fn bsp_layout(workspace: &mut Workspace, window: Window, event: WindowLayoutEvent) {
     let output = workspace
         .outputs()
         .next()
@@ -10,39 +24,78 @@ pub fn bsp_layout(workspace: &Workspace) -> Vec<Rectangle<i32, Logical>> {
         .current_mode()
         .unwrap()
         .size;
-    let mut current_geometry: Rectangle<i32, Logical> = Rectangle {
-        loc: Point::from((0, 0)),
-        size: Size::from((output.w, output.h)),
-    };
-    let mut layout: Vec<Rectangle<i32, Logical>> = Vec::new();
-    let noofwindows = workspace.windows().count();
-    let mut tileside = false;
-    for i in 0..noofwindows {
-        let loc;
-        if tileside {
-            loc = Point::from((output.w - current_geometry.size.w, current_geometry.loc.y))
-        } else {
-            loc = Point::from((current_geometry.loc.x, output.h - current_geometry.size.h))
-        }
-        tileside = !tileside;
-        if noofwindows > i + 1 {
-            let size;
-            if tileside {
-                size = Size::from((current_geometry.size.w / 2, current_geometry.size.h));
+
+    match event {
+        WindowLayoutEvent::Added => {
+            let tiledwindow;
+            if let Some(d) = workspace.layout_tree.last() {
+                let size;
+                let split;
+                match d.split {
+                    HorizontalOrVertical::Horizontal => {
+                        size = Size::from((
+                            d.element.borrow().rec.size.w / 2,
+                            d.element.borrow().rec.size.h,
+                        ));
+
+                        split = HorizontalOrVertical::Vertical;
+                    }
+                    HorizontalOrVertical::Vertical => {
+                        size = Size::from((
+                            d.element.borrow().rec.size.w,
+                            d.element.borrow().rec.size.h / 2,
+                        ));
+                        split = HorizontalOrVertical::Horizontal;
+                    }
+                }
+
+                d.element.borrow_mut().rec.size = size;
+
+                let loc;
+                match d.split {
+                    HorizontalOrVertical::Horizontal => {
+                        loc = Point::from((
+                            output.w - d.element.borrow().rec.size.w,
+                            d.element.borrow().rec.loc.y,
+                        ));
+                    }
+                    HorizontalOrVertical::Vertical => {
+                        loc = Point::from((
+                            d.element.borrow().rec.loc.x,
+                            output.h - d.element.borrow().rec.size.h,
+                        ));
+                    }
+                }
+
+                tiledwindow = TiledHoloWindow {
+                    element: Rc::new(RefCell::new(HoloWindow {
+                        window,
+                        rec: Rectangle { loc, size },
+                    })),
+                    split,
+                    ratio: 0.5,
+                };
             } else {
-                size = Size::from((current_geometry.size.w, current_geometry.size.h / 2));
+                tiledwindow = TiledHoloWindow {
+                    element: Rc::new(RefCell::new(HoloWindow {
+                        window,
+                        rec: Rectangle {
+                            loc: Point::from((0, 0)),
+                            size: Size::from((output.w, output.h)),
+                        },
+                    })),
+                    split: HorizontalOrVertical::Horizontal,
+                    ratio: 0.5,
+                };
             }
-            current_geometry = Rectangle {
-                loc: loc,
-                size: size,
-            };
-        } else {
-            current_geometry = Rectangle {
-                loc: loc,
-                size: current_geometry.size,
-            };
+
+            workspace.layout_tree.insert(tiledwindow.clone());
+
+            workspace.add_window(tiledwindow.element);
         }
-        layout.push(current_geometry)
+        WindowLayoutEvent::Removed => {
+            workspace.layout_tree.remove(&window);
+        }
+        WindowLayoutEvent::Resized => todo!(),
     }
-    layout
 }

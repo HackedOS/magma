@@ -1,3 +1,8 @@
+use std::{
+    cell::{Ref, RefCell},
+    rc::Rc,
+};
+
 use smithay::{
     backend::renderer::{
         element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
@@ -8,25 +13,29 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Scale, Transform},
 };
 
+use super::binarytree::BinaryTree;
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct HoloWindow {
-    window: Window,
-    location: Point<i32, Logical>,
+    pub window: Window,
+    pub rec: Rectangle<i32, Logical>,
 }
 impl HoloWindow {
     fn bbox(&self) -> Rectangle<i32, Logical> {
         let mut bbox = self.window.bbox();
-        bbox.loc += self.location - self.window.geometry().loc;
+        bbox.loc += self.rec.loc - self.window.geometry().loc;
         bbox
     }
 
     fn render_location(&self) -> Point<i32, Logical> {
-        self.location - self.window.geometry().loc
+        self.rec.loc - self.window.geometry().loc
     }
 }
 pub struct Workspace {
-    windows: Vec<HoloWindow>,
+    windows: Vec<Rc<RefCell<HoloWindow>>>,
     outputs: Vec<Output>,
     id: u8,
+    pub layout_tree: BinaryTree,
 }
 
 impl Workspace {
@@ -35,30 +44,29 @@ impl Workspace {
             windows: Vec::new(),
             outputs: Vec::new(),
             id,
+            layout_tree: BinaryTree::new(),
         }
     }
 
-    pub fn windows(&self) -> impl Iterator<Item = &Window> {
-        self.windows.iter().map(|w| &w.window)
+    pub fn windows(&self) -> impl Iterator<Item = Ref<'_, Window>> {
+        self.windows
+            .iter()
+            .map(|w| Ref::map(w.borrow(), |hw| &hw.window))
     }
 
-    pub fn add_window<P>(&mut self, window: Window, location: P)
-    where
-        P: Into<Point<i32, Logical>>,
-    {
+    pub fn holowindows(&self) -> impl Iterator<Item = Ref<'_, HoloWindow>> {
+        self.windows.iter().map(|w| Ref::map(w.borrow(), |hw| hw))
+    }
+
+    pub fn add_window(&mut self, window: Rc<RefCell<HoloWindow>>) {
         // add window to vec and remap if exists
-        if let Some(index) = self.windows.iter().position(|w| &w.window == &window) {
-            self.windows[index].location = location.into();
-        } else {
-            self.windows.push(HoloWindow {
-                window,
-                location: location.into(),
-            });
-        }
+        self.windows
+            .retain(|w| &w.borrow().window != &window.borrow().window);
+        self.windows.push(window);
     }
 
     pub fn remove_window(&mut self, window: &Window) {
-        self.windows.retain(|w| &w.window != window);
+        self.windows.retain(|w| &w.borrow().window != window);
     }
 
     pub fn render_elements(
@@ -67,9 +75,9 @@ impl Workspace {
     ) -> Vec<WaylandSurfaceRenderElement<Gles2Renderer>> {
         let mut render_elements: Vec<WaylandSurfaceRenderElement<Gles2Renderer>> = Vec::new();
         for element in &self.windows {
-            render_elements.append(&mut element.window.render_elements(
+            render_elements.append(&mut element.borrow().window.render_elements(
                 renderer,
-                (element.location.x, element.location.y).into(),
+                (element.borrow().rec.loc.x, element.borrow().rec.loc.y).into(),
                 Scale::from(1.0),
             ));
         }
@@ -109,18 +117,19 @@ impl Workspace {
     pub fn window_under<P: Into<Point<f64, Logical>>>(
         &self,
         point: P,
-    ) -> Option<(&Window, Point<i32, Logical>)> {
+    ) -> Option<(Ref<'_, Window>, Point<i32, Logical>)> {
         let point = point.into();
         self.windows
             .iter()
-            .filter(|e| e.bbox().to_f64().contains(point))
+            .filter(|e| e.borrow().bbox().to_f64().contains(point))
             .find_map(|e| {
                 // we need to offset the point to the location where the surface is actually drawn
-                let render_location = e.render_location();
-                if e.window
+                let render_location = e.borrow().render_location();
+                if e.borrow()
+                    .window
                     .is_in_input_region(&(point - render_location.to_f64()))
                 {
-                    Some((&e.window, render_location))
+                    Some((Ref::map(e.borrow(), |hw| &hw.window), render_location))
                 } else {
                     None
                 }
@@ -128,7 +137,7 @@ impl Workspace {
     }
 
     pub fn contains_window(&self, window: &Window) -> bool {
-        self.windows.iter().any(|w| &w.window == window)
+        self.windows.iter().any(|w| &w.borrow().window == window)
     }
 }
 
@@ -153,7 +162,7 @@ impl Workspaces {
         &mut self.workspaces[self.current as usize]
     }
 
-    pub fn all_windows(&self) -> impl Iterator<Item = &Window> {
+    pub fn all_windows(&self) -> impl Iterator<Item = Ref<'_, Window>> {
         self.workspaces.iter().flat_map(|w| w.windows())
     }
 
