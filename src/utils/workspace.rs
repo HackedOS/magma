@@ -47,11 +47,14 @@ impl Workspace {
         P: Into<Point<i32, Logical>>,
     {
         // add window to vec and remap if exists
-        self.windows.retain(|w| &w.window != &window);
-        self.windows.push(HoloWindow {
-            window: window,
-            location: location.into(),
-        });
+        if let Some(index) = self.windows.iter().position(|w| &w.window == &window) {
+            self.windows[index].location = location.into();
+        } else {
+            self.windows.push(HoloWindow {
+                window,
+                location: location.into(),
+            });
+        }
     }
 
     pub fn remove_window(&mut self, window: &Window) {
