@@ -47,23 +47,34 @@ impl BinaryTree {
                 right.insert(window);
             }
         }
-        println!("{:?}", self);
     }
 
     pub fn remove(&mut self, window: &Window) {
         match self {
             BinaryTree::Empty => {}
             BinaryTree::Window(w) => {
+                // Should only happen if this is the root
                 if w.element.borrow().window == *window {
                     *self = BinaryTree::Empty;
                 }
             }
             BinaryTree::Split { left, right } => {
+                if let BinaryTree::Window(w) = left.as_ref() {
+                    if w.element.borrow().window == *window {
+                        *self = *right.clone();
+                        return;
+                    }
+                }
+                if let BinaryTree::Window(w) = right.as_ref() {
+                    if w.element.borrow().window == *window {
+                        *self = *left.clone();
+                        return;
+                    }
+                }
                 left.remove(window);
                 right.remove(window);
             }
         }
-        println!("{:?}", self);
     }
 
     pub fn last(&self) -> Option<TiledHoloWindow> {
