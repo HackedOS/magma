@@ -1,6 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
-
 use smithay::desktop::Window;
+use std::fmt::Debug;
+use std::{cell::RefCell, rc::Rc};
 
 use super::workspace::HoloWindow;
 
@@ -14,11 +14,21 @@ pub enum BinaryTree {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct TiledHoloWindow {
     pub element: Rc<RefCell<HoloWindow>>,
     pub split: HorizontalOrVertical,
     pub ratio: f32,
+}
+
+impl Debug for TiledHoloWindow {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TiledHoloWindow")
+            .field("element", &self.element.borrow().rec)
+            .field("split", &self.split)
+            .field("ratio", &self.ratio)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
