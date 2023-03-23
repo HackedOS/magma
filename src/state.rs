@@ -21,6 +21,7 @@ use smithay::{
         socket::ListeningSocketSource,
     },
 };
+use tracing::info;
 
 use crate::{config::Config, utils::workspace::Workspaces};
 
@@ -55,7 +56,7 @@ impl HoloState {
 
         let config = Config::load();
 
-        println!("Config: {:#?}", config);
+        info!("Config: {:#?}", config);
 
         let dh = display.handle();
 

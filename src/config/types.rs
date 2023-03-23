@@ -50,7 +50,7 @@ where
                 &"One of the keysym names of xkbcommon.h without the 'KEY_' prefix",
             )),
             x => {
-                println!(
+                dbg!(
                     "Key-Binding '{}' only matched case insensitive for {:?}",
                     name,
                     xkb::keysym_get_name(x)

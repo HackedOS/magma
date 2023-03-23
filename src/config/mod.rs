@@ -28,9 +28,9 @@ impl Config {
         };
 
         for path in locations {
-            println!("Trying config location: {}", path.display());
+            dbg!("Trying config location: {}", path.display());
             if path.exists() {
-                println!("Using config at {}", path.display());
+                dbg!("Using config at {}", path.display());
                 return ron::de::from_reader(OpenOptions::new().read(true).open(path).unwrap())
                     .expect("Malformed config file");
             }

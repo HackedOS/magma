@@ -1,3 +1,5 @@
+use tracing::info;
+
 use crate::{config::Action, state::HoloState};
 
 impl HoloState {
@@ -23,7 +25,7 @@ impl HoloState {
                     .arg(command.clone())
                     .spawn()
                 {
-                    println!("{} {} {}", err, "Failed to spawn \"{}\"", command);
+                    info!("{} {} {}", err, "Failed to spawn \"{}\"", command);
                 }
             }
         }

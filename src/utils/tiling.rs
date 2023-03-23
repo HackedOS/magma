@@ -48,7 +48,7 @@ pub fn bsp_layout(workspace: &mut Workspace, window: Window, event: WindowLayout
         }
         WindowLayoutEvent::Resized => todo!(),
     }
-    println!("{:#?}", workspace.layout_tree);
+    dbg!("{:#?}", workspace.layout_tree.clone());
 }
 
 pub fn bsp_update_layout(workspace: &mut Workspace) {
