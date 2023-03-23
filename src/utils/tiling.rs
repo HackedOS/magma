@@ -2,11 +2,11 @@ use std::{cell::RefCell, rc::Rc};
 
 use smithay::{
     desktop::Window,
-    utils::{Point, Rectangle, Size},
+    utils::{Logical, Physical, Point, Rectangle, Size},
 };
 
 use super::{
-    binarytree::{HorizontalOrVertical, TiledHoloWindow},
+    binarytree::{BinaryTree, HorizontalOrVertical},
     workspace::{HoloWindow, Workspace},
 };
 
@@ -27,76 +27,127 @@ pub fn bsp_layout(workspace: &mut Workspace, window: Window, event: WindowLayout
 
     match event {
         WindowLayoutEvent::Added => {
-            let tiledwindow;
-            if let Some(d) = workspace.layout_tree.last() {
-                let size;
-                let split;
-                match d.split {
-                    HorizontalOrVertical::Horizontal => {
-                        size = Size::from((
-                            d.element.borrow().rec.size.w / 2,
-                            d.element.borrow().rec.size.h,
-                        ));
+            let window = Rc::new(RefCell::new(HoloWindow {
+                window,
+                rec: Rectangle {
+                    loc: Point::from((0, 0)),
+                    size: Size::from((output.w, output.h)),
+                },
+            }));
+            workspace
+                .layout_tree
+                .insert(window.clone(), workspace.layout_tree.next_split(), 0.5);
 
-                        split = HorizontalOrVertical::Vertical;
-                    }
-                    HorizontalOrVertical::Vertical => {
-                        size = Size::from((
-                            d.element.borrow().rec.size.w,
-                            d.element.borrow().rec.size.h / 2,
-                        ));
-                        split = HorizontalOrVertical::Horizontal;
-                    }
-                }
+            bsp_update_layout(workspace);
 
-                d.element.borrow_mut().rec.size = size;
-
-                let loc;
-                match d.split {
-                    HorizontalOrVertical::Horizontal => {
-                        loc = Point::from((
-                            output.w - d.element.borrow().rec.size.w,
-                            d.element.borrow().rec.loc.y,
-                        ));
-                    }
-                    HorizontalOrVertical::Vertical => {
-                        loc = Point::from((
-                            d.element.borrow().rec.loc.x,
-                            output.h - d.element.borrow().rec.size.h,
-                        ));
-                    }
-                }
-
-                tiledwindow = TiledHoloWindow {
-                    element: Rc::new(RefCell::new(HoloWindow {
-                        window,
-                        rec: Rectangle { loc, size },
-                    })),
-                    split,
-                    ratio: 0.5,
-                };
-            } else {
-                tiledwindow = TiledHoloWindow {
-                    element: Rc::new(RefCell::new(HoloWindow {
-                        window,
-                        rec: Rectangle {
-                            loc: Point::from((0, 0)),
-                            size: Size::from((output.w, output.h)),
-                        },
-                    })),
-                    split: HorizontalOrVertical::Horizontal,
-                    ratio: 0.5,
-                };
-            }
-
-            workspace.layout_tree.insert(tiledwindow.clone());
-
-            workspace.add_window(tiledwindow.element);
+            workspace.add_window(window)
         }
         WindowLayoutEvent::Removed => {
             workspace.layout_tree.remove(&window);
+            bsp_update_layout(workspace);
         }
         WindowLayoutEvent::Resized => todo!(),
     }
     println!("{:#?}", workspace.layout_tree);
+}
+
+pub fn bsp_update_layout(workspace: &mut Workspace) {
+    //recalculate the size and location of the windows
+
+    let output = workspace
+        .outputs()
+        .next()
+        .unwrap()
+        .current_mode()
+        .unwrap()
+        .size;
+
+    match &mut workspace.layout_tree {
+        BinaryTree::Empty => {}
+        BinaryTree::Window(w) => {
+            w.borrow_mut().rec = Rectangle {
+                loc: Point::from((0, 0)),
+                size: Size::from((output.w, output.h)),
+            };
+        }
+        BinaryTree::Split {
+            left,
+            right,
+            split,
+            ratio,
+        } => {
+            if let BinaryTree::Window(w) = left.as_mut() {
+                generate_layout(
+                    right.as_mut(),
+                    &w,
+                    Rectangle {
+                        loc: Point::from((0, 0)),
+                        size: output.to_logical(1),
+                    },
+                    *split,
+                    *ratio,
+                    output,
+                )
+            }
+        }
+    }
+}
+
+pub fn generate_layout(
+    tree: &mut BinaryTree,
+    lastwin: &Rc<RefCell<HoloWindow>>,
+    lastgeo: Rectangle<i32, Logical>,
+    split: HorizontalOrVertical,
+    ratio: f32,
+    output: Size<i32, Physical>,
+) {
+    let size;
+    match split {
+        HorizontalOrVertical::Horizontal => {
+            size = Size::from((lastgeo.size.w / 2, lastgeo.size.h));
+        }
+        HorizontalOrVertical::Vertical => {
+            size = Size::from((lastgeo.size.w, lastgeo.size.h / 2));
+        }
+    }
+
+    let loc;
+    match split {
+        HorizontalOrVertical::Horizontal => {
+            loc = Point::from((lastgeo.loc.x, output.h - size.h));
+        }
+        HorizontalOrVertical::Vertical => {
+            loc = Point::from((output.w - size.w, lastgeo.loc.y));
+        }
+    }
+
+    lastwin.borrow_mut().rec = Rectangle { size, loc };
+
+    let loc;
+    match split {
+        HorizontalOrVertical::Horizontal => {
+            loc = Point::from((output.w - size.w, lastgeo.loc.y));
+        }
+        HorizontalOrVertical::Vertical => {
+            loc = Point::from((lastgeo.loc.x, output.h - size.h));
+        }
+    }
+
+    let rec = Rectangle { size, loc };
+
+    match tree {
+        BinaryTree::Empty => {}
+        BinaryTree::Window(w) => w.borrow_mut().rec = rec,
+        BinaryTree::Split {
+            split,
+            ratio,
+            left,
+            right,
+        } => {
+            if let BinaryTree::Window(w) = left.as_mut() {
+                w.borrow_mut().rec = rec;
+                generate_layout(right.as_mut(), &w, rec, *split, *ratio, output)
+            }
+        }
+    }
 }

@@ -4,34 +4,40 @@ use std::{cell::RefCell, rc::Rc};
 
 use super::workspace::HoloWindow;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum BinaryTree {
     Empty,
-    Window(TiledHoloWindow),
+    Window(Rc<RefCell<HoloWindow>>),
     Split {
+        split: HorizontalOrVertical,
+        ratio: f32,
         left: Box<BinaryTree>,
         right: Box<BinaryTree>,
     },
 }
 
-#[derive(Clone)]
-pub struct TiledHoloWindow {
-    pub element: Rc<RefCell<HoloWindow>>,
-    pub split: HorizontalOrVertical,
-    pub ratio: f32,
-}
-
-impl Debug for TiledHoloWindow {
+impl Debug for BinaryTree {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("TiledHoloWindow")
-            .field("element", &self.element.borrow().rec)
-            .field("split", &self.split)
-            .field("ratio", &self.ratio)
-            .finish()
+        match self {
+            Self::Empty => write!(f, "Empty"),
+            Self::Window(w) => w.borrow().rec.fmt(f),
+            Self::Split {
+                left,
+                right,
+                split,
+                ratio,
+            } => f
+                .debug_struct("Split")
+                .field("split", split)
+                .field("ratio", ratio)
+                .field("left", left)
+                .field("right", right)
+                .finish(),
+        }
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum HorizontalOrVertical {
     Horizontal,
     Vertical,
@@ -42,7 +48,12 @@ impl BinaryTree {
         BinaryTree::Empty
     }
 
-    pub fn insert(&mut self, window: TiledHoloWindow) {
+    pub fn insert(
+        &mut self,
+        window: Rc<RefCell<HoloWindow>>,
+        splitnew: HorizontalOrVertical,
+        rationew: f32,
+    ) {
         match self {
             BinaryTree::Empty => {
                 *self = BinaryTree::Window(window);
@@ -51,10 +62,17 @@ impl BinaryTree {
                 *self = BinaryTree::Split {
                     left: Box::new(BinaryTree::Window(w.clone())),
                     right: Box::new(BinaryTree::Window(window)),
+                    split: splitnew,
+                    ratio: rationew,
                 };
             }
-            BinaryTree::Split { left: _, right } => {
-                right.insert(window);
+            BinaryTree::Split {
+                left: _,
+                right,
+                split: _,
+                ratio: _,
+            } => {
+                right.insert(window, splitnew, rationew);
             }
         }
     }
@@ -64,19 +82,24 @@ impl BinaryTree {
             BinaryTree::Empty => {}
             BinaryTree::Window(w) => {
                 // Should only happen if this is the root
-                if w.element.borrow().window == *window {
+                if w.borrow().window == *window {
                     *self = BinaryTree::Empty;
                 }
             }
-            BinaryTree::Split { left, right } => {
+            BinaryTree::Split {
+                left,
+                right,
+                split: _,
+                ratio: _,
+            } => {
                 if let BinaryTree::Window(w) = left.as_ref() {
-                    if w.element.borrow().window == *window {
+                    if w.borrow().window == *window {
                         *self = *right.clone();
                         return;
                     }
                 }
                 if let BinaryTree::Window(w) = right.as_ref() {
-                    if w.element.borrow().window == *window {
+                    if w.borrow().window == *window {
                         *self = *left.clone();
                         return;
                     }
@@ -87,11 +110,45 @@ impl BinaryTree {
         }
     }
 
-    pub fn last(&self) -> Option<TiledHoloWindow> {
+    pub fn next_split(&self) -> HorizontalOrVertical {
+        match self {
+            BinaryTree::Empty => HorizontalOrVertical::Horizontal,
+            BinaryTree::Window(_w) => HorizontalOrVertical::Horizontal,
+            BinaryTree::Split {
+                left: _,
+                right,
+                split,
+                ratio: _,
+            } => {
+                if let BinaryTree::Split {
+                    left: _,
+                    right: _,
+                    split: _,
+                    ratio: _,
+                } = right.as_ref()
+                {
+                    right.next_split()
+                } else {
+                    if *split == HorizontalOrVertical::Horizontal {
+                        HorizontalOrVertical::Vertical
+                    } else {
+                        HorizontalOrVertical::Horizontal
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn last(&self) -> Option<Rc<RefCell<HoloWindow>>> {
         match self {
             BinaryTree::Empty => None,
             BinaryTree::Window(w) => Some(w.clone()),
-            BinaryTree::Split { left, right } => right.last().or(left.last()),
+            BinaryTree::Split {
+                left,
+                right,
+                split,
+                ratio,
+            } => right.last().or(left.last()),
         }
     }
 }
