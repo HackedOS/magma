@@ -18,3 +18,9 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: build
+          args: --release
+      - name: Archive release artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release artifact
+          path: target/release/holowm
