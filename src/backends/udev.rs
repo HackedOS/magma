@@ -130,6 +130,14 @@ pub fn init_udev() {
             calloopdata.state.backend_data.on_udev_event(event)
         })
         .unwrap();
+
+    let mut calloopdata = CalloopData { state, display };
+
+    event_loop
+        .run(None, &mut calloopdata, move |_| {
+            // HoloWM is running
+        })
+        .unwrap();
 }
 
 pub fn primary_gpu(seat: &str) -> (DrmNode, PathBuf) {
