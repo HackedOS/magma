@@ -13,7 +13,7 @@ tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 smithay-drm-extras = { git = "https://github.com/HackedOS/smithay.git"}
 [dependencies.smithay]
-git = "https://github.com/HackedOS/smithay.git"
+git = "https://github.com/Smithay/smithay.git"
 default-features = false
 features = [
     "backend_winit",

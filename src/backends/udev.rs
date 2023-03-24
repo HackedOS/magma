@@ -69,6 +69,10 @@ pub fn init_udev() {
             return;
         }
     };
+    event_loop
+        .handle()
+        .insert_source(notifier, |_, _, _| {})
+        .unwrap();
 
     /*
      * Initialize the compositor
@@ -76,7 +80,7 @@ pub fn init_udev() {
     let (primary_gpu, _) = primary_gpu(&session.seat());
     info!("Using {} as primary gpu.", primary_gpu);
 
-    let gpus = GpuManager::new(GbmGlesBackend::default()).unwrap();
+    let gpus = GpuManager::new(Default::default()).unwrap();
 
     let data = UdevData {
         handle: event_loop.handle(),
