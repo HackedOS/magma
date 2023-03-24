@@ -9,11 +9,11 @@ use smithay::{
     },
 };
 
-use crate::state::HoloState;
+use crate::state::{Backend, HoloState};
 
 use super::xdg_shell;
 
-impl CompositorHandler for HoloState {
+impl<BackendData: Backend> CompositorHandler for HoloState<BackendData> {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.compositor_state
     }
@@ -39,15 +39,15 @@ impl CompositorHandler for HoloState {
     }
 }
 
-impl BufferHandler for HoloState {
+impl<BackendData: Backend> BufferHandler for HoloState<BackendData> {
     fn buffer_destroyed(&mut self, _buffer: &WlBuffer) {}
 }
 
-impl ShmHandler for HoloState {
+impl<BackendData: Backend> ShmHandler for HoloState<BackendData> {
     fn shm_state(&self) -> &smithay::wayland::shm::ShmState {
         &self.shm_state
     }
 }
 
-delegate_compositor!(HoloState);
-delegate_shm!(HoloState);
+delegate_compositor!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_shm!(@<BackendData: Backend + 'static> HoloState<BackendData>);

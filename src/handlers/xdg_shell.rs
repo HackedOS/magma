@@ -17,14 +17,14 @@ use smithay::{
 };
 
 use crate::{
-    state::HoloState,
+    state::{Backend, HoloState},
     utils::{
         tiling::{bsp_layout, WindowLayoutEvent},
         workspace::Workspaces,
     },
 };
 
-impl XdgShellHandler for HoloState {
+impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
@@ -102,10 +102,10 @@ pub fn handle_commit(workspaces: &mut Workspaces, surface: &WlSurface) -> Option
     Some(())
 }
 
-delegate_xdg_shell!(HoloState);
+delegate_xdg_shell!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
 // Disable decorations
-impl XdgDecorationHandler for HoloState {
+impl<BackendData: Backend> XdgDecorationHandler for HoloState<BackendData> {
     fn new_decoration(&mut self, toplevel: ToplevelSurface) {
         toplevel.with_pending_state(|state| {
             // Advertise server side decoration
@@ -119,4 +119,4 @@ impl XdgDecorationHandler for HoloState {
     fn unset_mode(&mut self, _toplevel: ToplevelSurface) {}
 }
 
-delegate_xdg_decoration!(HoloState);
+delegate_xdg_decoration!(@<BackendData: Backend + 'static> HoloState<BackendData>);

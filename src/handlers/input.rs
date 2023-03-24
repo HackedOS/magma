@@ -1,8 +1,11 @@
 use tracing::info;
 
-use crate::{config::Action, state::HoloState};
+use crate::{
+    config::Action,
+    state::{Backend, HoloState},
+};
 
-impl HoloState {
+impl<BackendData: Backend> HoloState<BackendData> {
     pub fn handle_action(&mut self, action: Action) {
         match action {
             Action::Quit => self.loop_signal.stop(),

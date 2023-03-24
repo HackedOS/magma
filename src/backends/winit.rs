@@ -7,23 +7,34 @@ use smithay::{
     },
     desktop::space::SpaceElement,
     output::{Mode, Output, PhysicalProperties, Subpixel},
-    reexports::calloop::{
-        timer::{TimeoutAction, Timer},
-        EventLoop,
+    reexports::{
+        calloop::{
+            timer::{TimeoutAction, Timer},
+            EventLoop,
+        },
+        wayland_server::Display,
     },
     utils::{Rectangle, Transform},
 };
 
-use crate::{CalloopData, HoloState};
+pub struct WinitData {
+    backend: WinitGraphicsBackend<Gles2Renderer>,
+    damage_tracked_renderer: DamageTrackedRenderer,
+}
 
-pub fn init_winit(
-    event_loop: &mut EventLoop<CalloopData>,
-    data: &mut CalloopData,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let display = &mut data.display;
-    let state = &mut data.state;
+impl Backend for WinitData {
+    fn seat_name(&self) -> String {
+        "winit".to_string()
+    }
+}
+use crate::{state::Backend, CalloopData, HoloState};
 
-    let (mut backend, mut winit) = winit::init()?;
+pub fn init_winit() {
+    let mut event_loop: EventLoop<CalloopData<WinitData>> = EventLoop::try_new().unwrap();
+
+    let mut display: Display<HoloState<WinitData>> = Display::new().unwrap();
+
+    let (mut backend, mut winit) = winit::init().unwrap();
 
     let mode = Mode {
         size: backend.window_size().physical_size,
@@ -39,7 +50,7 @@ pub fn init_winit(
             model: "Winit".into(),
         },
     );
-    let _global = output.create_global::<HoloState>(&display.handle());
+    let _global = output.create_global::<HoloState<WinitData>>(&display.handle());
     output.change_current_state(
         Some(mode),
         Some(Transform::Flipped180),
@@ -48,44 +59,53 @@ pub fn init_winit(
     );
     output.set_preferred(mode);
 
+    let damage_tracked_renderer = DamageTrackedRenderer::from_output(&output);
+
+    let winitdata = WinitData {
+        backend,
+        damage_tracked_renderer,
+    };
+    let state = HoloState::new(&mut event_loop, &mut display, winitdata);
+
+    let mut data = CalloopData {
+        display,
+        state: state,
+    };
+
+    let state = &mut data.state;
+
     // map output to every workspace
     for workspace in state.workspaces.iter() {
         workspace.add_output(output.clone());
     }
-
-    let mut damage_tracked_renderer = DamageTrackedRenderer::from_output(&output);
 
     std::env::set_var("WAYLAND_DISPLAY", &state.socket_name);
 
     let mut full_redraw = 0u8;
 
     let timer = Timer::immediate();
+
     event_loop
         .handle()
         .insert_source(timer, move |_, _, data| {
-            winit_dispatch(
-                &mut backend,
-                &mut winit,
-                data,
-                &output,
-                &mut damage_tracked_renderer,
-                &mut full_redraw,
-            )
-            .unwrap();
+            winit_dispatch(&mut winit, data, &output, &mut full_redraw);
             TimeoutAction::ToDuration(Duration::from_millis(16))
-        })?;
+        })
+        .unwrap();
 
-    Ok(())
+    event_loop
+        .run(None, &mut data, move |_| {
+            // HoloWM is running
+        })
+        .unwrap();
 }
 
 pub fn winit_dispatch(
-    backend: &mut WinitGraphicsBackend<Gles2Renderer>,
     winit: &mut WinitEventLoop,
-    data: &mut CalloopData,
+    data: &mut CalloopData<WinitData>,
     output: &Output,
-    damage_tracked_renderer: &mut DamageTrackedRenderer,
     full_redraw: &mut u8,
-) -> Result<(), Box<dyn std::error::Error>> {
+) {
     let display = &mut data.display;
     let state = &mut data.state;
 
@@ -105,34 +125,37 @@ pub fn winit_dispatch(
         _ => (),
     });
 
+    let winitdata = &mut state.backend_data;
+
     if let Err(WinitError::WindowClosed) = res {
         // Stop the loop
         state.loop_signal.stop();
-
-        return Ok(());
     } else {
-        res?;
+        res.unwrap();
     }
 
     *full_redraw = full_redraw.saturating_sub(1);
 
-    let size = backend.window_size().physical_size;
+    let size = winitdata.backend.window_size().physical_size;
     let damage = Rectangle::from_loc_and_size((0, 0), size);
 
-    backend.bind()?;
+    winitdata.backend.bind().unwrap();
 
     let renderelements = state
         .workspaces
         .current()
-        .render_elements(backend.renderer());
-    damage_tracked_renderer.render_output(
-        backend.renderer(),
-        0,
-        &renderelements,
-        [0.1, 0.1, 0.1, 1.0],
-    )?;
+        .render_elements(winitdata.backend.renderer());
+    winitdata
+        .damage_tracked_renderer
+        .render_output(
+            winitdata.backend.renderer(),
+            0,
+            &renderelements,
+            [0.1, 0.1, 0.1, 1.0],
+        )
+        .unwrap();
 
-    backend.submit(Some(&[damage]))?;
+    winitdata.backend.submit(Some(&[damage])).unwrap();
 
     state.workspaces.current().windows().for_each(|window| {
         window.send_frame(
@@ -144,7 +167,5 @@ pub fn winit_dispatch(
     });
 
     state.workspaces.all_windows().for_each(|e| e.refresh());
-    display.flush_clients()?;
-
-    Ok(())
+    display.flush_clients().unwrap();
 }

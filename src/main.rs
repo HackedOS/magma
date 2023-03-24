@@ -1,16 +1,21 @@
-use backends::winit::init_winit;
-use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 use state::{CalloopData, HoloState};
-use tracing::info;
+use tracing::{error, info};
+
+use crate::backends::{udev, winit};
 
 mod backends;
 mod config;
 mod handlers;
 mod input;
 mod state;
+mod surface;
 mod utils;
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+static POSSIBLE_BACKENDS: &[&str] = &[
+    "--winit : Run anvil as a X11 or Wayland client using winit.",
+    "--tty-udev : Run anvil as a tty udev client (requires root if without logind).",
+];
+fn main() {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
         tracing_subscriber::fmt()
             .compact()
@@ -20,24 +25,28 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         tracing_subscriber::fmt().compact().init();
     }
 
-    let mut event_loop: EventLoop<CalloopData> = EventLoop::try_new()?;
-
-    let mut display: Display<HoloState> = Display::new()?;
-    let state = HoloState::new(&mut event_loop, &mut display);
-
-    let mut data = CalloopData {
-        display,
-        state: state,
-    };
-
-    init_winit(&mut event_loop, &mut data)?;
-
-    std::process::Command::new("alacritty").spawn().ok();
-
-    event_loop.run(None, &mut data, move |_| {
-        // HoloWM is running
-    })?;
+    let arg = ::std::env::args().nth(1);
+    match arg.as_ref().map(|s| &s[..]) {
+        Some("--winit") => {
+            info!("Starting anvil with winit backend");
+            winit::init_winit();
+        }
+        Some("--tty-udev") => {
+            info!("Starting anvil on a tty using udev");
+            udev::init_udev();
+        }
+        Some(other) => {
+            error!("Unknown backend: {}", other);
+        }
+        None => {
+            println!("USAGE: holowm --backend");
+            println!();
+            println!("Possible backends are:");
+            for b in POSSIBLE_BACKENDS {
+                println!("\t{}", b);
+            }
+        }
+    }
 
     info!("HoloWM is shutting down");
-    Ok(())
 }

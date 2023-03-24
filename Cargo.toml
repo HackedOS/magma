@@ -11,12 +11,19 @@ serde = { version = "1", features = ["derive"] }
 xdg = "^2.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-
+smithay-drm-extras = { git = "https://github.com/HackedOS/smithay.git"}
 [dependencies.smithay]
-git = "https://github.com/Smithay/smithay.git"
+git = "https://github.com/HackedOS/smithay.git"
 default-features = false
 features = [
     "backend_winit",
     "wayland_frontend",
     "desktop",
+    "backend_session_libseat",
+    "backend_drm",
+    "renderer_multi",
+    "backend_gbm",
+    "backend_udev",
+    "backend_libinput",
+
 ]

@@ -7,13 +7,15 @@ use smithay::{
     },
 };
 
-use crate::state::HoloState;
+use crate::state::{Backend, HoloState};
 
 mod compositor;
+mod drm;
 mod input;
+mod udev;
 mod xdg_shell;
 
-impl SeatHandler for HoloState {
+impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
     type KeyboardFocus = WlSurface;
 
     type PointerFocus = WlSurface;
@@ -23,17 +25,17 @@ impl SeatHandler for HoloState {
     }
 }
 
-delegate_seat!(HoloState);
+delegate_seat!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
-impl DataDeviceHandler for HoloState {
+impl<BackendData: Backend> DataDeviceHandler for HoloState<BackendData> {
     fn data_device_state(&self) -> &DataDeviceState {
         &self.data_device_state
     }
 }
-impl ClientDndGrabHandler for HoloState {}
+impl<BackendData: Backend> ClientDndGrabHandler for HoloState<BackendData> {}
 
-impl ServerDndGrabHandler for HoloState {}
+impl<BackendData: Backend> ServerDndGrabHandler for HoloState<BackendData> {}
 
-delegate_data_device!(HoloState);
+delegate_data_device!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
-delegate_output!(HoloState);
+delegate_output!(@<BackendData: Backend + 'static> HoloState<BackendData>);
