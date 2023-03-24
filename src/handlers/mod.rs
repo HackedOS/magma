@@ -10,9 +10,7 @@ use smithay::{
 use crate::state::{Backend, HoloState};
 
 mod compositor;
-mod drm;
 mod input;
-mod udev;
 mod xdg_shell;
 
 impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {

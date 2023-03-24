@@ -34,7 +34,7 @@ pub fn init_winit() {
 
     let mut display: Display<HoloState<WinitData>> = Display::new().unwrap();
 
-    let (mut backend, mut winit) = winit::init().unwrap();
+    let (backend, mut winit) = winit::init().unwrap();
 
     let mode = Mode {
         size: backend.window_size().physical_size,

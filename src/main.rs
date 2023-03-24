@@ -8,7 +8,6 @@ mod config;
 mod handlers;
 mod input;
 mod state;
-mod surface;
 mod utils;
 
 static POSSIBLE_BACKENDS: &[&str] = &[
