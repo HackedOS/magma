@@ -49,8 +49,9 @@ pub struct HoloState<BackendData: Backend + 'static> {
     pub data_device_state: DataDeviceState,
     pub seat_state: SeatState<HoloState<BackendData>>,
 
+    //input stuff
+    pub pointer_location: Point<f64, Logical>,
     pub seat: Seat<HoloState<BackendData>>,
-
     pub seat_name: String,
 }
 
@@ -109,6 +110,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
             seat,
             backend_data,
             seat_name,
+            pointer_location: (0.0, 0.0).into(),
         }
     }
 
@@ -157,11 +159,8 @@ impl<BackendData: Backend> HoloState<BackendData> {
         socket_name
     }
 
-    pub fn surface_under_pointer(
-        &mut self,
-        pointer: &PointerHandle<Self>,
-    ) -> Option<(WlSurface, Point<i32, Logical>)> {
-        let pos = pointer.current_location();
+    pub fn surface_under(&mut self) -> Option<(WlSurface, Point<i32, Logical>)> {
+        let pos = self.pointer_location;
         self.workspaces
             .current()
             .window_under(pos)
