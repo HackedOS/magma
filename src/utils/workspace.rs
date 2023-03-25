@@ -6,7 +6,7 @@ use std::{
 use smithay::{
     backend::renderer::{
         element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
-        gles2::Gles2Renderer,
+        ImportAll, Renderer, Texture,
     },
     desktop::{space::SpaceElement, Window},
     output::Output,
@@ -69,11 +69,14 @@ impl Workspace {
         self.windows.retain(|w| &w.borrow().window != window);
     }
 
-    pub fn render_elements(
+    pub fn render_elements<'a, R: Renderer + ImportAll>(
         &self,
-        renderer: &mut Gles2Renderer,
-    ) -> Vec<WaylandSurfaceRenderElement<Gles2Renderer>> {
-        let mut render_elements: Vec<WaylandSurfaceRenderElement<Gles2Renderer>> = Vec::new();
+        renderer: &mut R,
+    ) -> Vec<WaylandSurfaceRenderElement<R>>
+    where
+        <R as Renderer>::TextureId: Texture + 'static,
+    {
+        let mut render_elements: Vec<WaylandSurfaceRenderElement<R>> = Vec::new();
         for element in &self.windows {
             render_elements.append(&mut element.borrow().window.render_elements(
                 renderer,
@@ -158,8 +161,12 @@ impl Workspaces {
         self.workspaces.iter_mut()
     }
 
-    pub fn current(&mut self) -> &mut Workspace {
+    pub fn current_mut(&mut self) -> &mut Workspace {
         &mut self.workspaces[self.current as usize]
+    }
+
+    pub fn current(&self) -> &Workspace {
+        &self.workspaces[self.current as usize]
     }
 
     pub fn all_windows(&self) -> impl Iterator<Item = Ref<'_, Window>> {

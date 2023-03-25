@@ -2,6 +2,7 @@ use std::{
     collections::{HashMap, HashSet},
     os::fd::FromRawFd,
     path::PathBuf,
+    time::{Duration, Instant},
 };
 
 use smithay::{
@@ -16,14 +17,15 @@ use smithay::{
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             damage::DamageTrackedRenderer,
-            element::memory::MemoryRenderBufferRenderElement,
+            element::surface::WaylandSurfaceRenderElement,
             gles2::Gles2Renderer,
             multigpu::{gbm::GbmGlesBackend, GpuManager},
-            Bind, ImportMem, Renderer,
+            Bind, ImportAll, ImportMem, Renderer,
         },
         session::{libseat::LibSeatSession, Session},
         udev::{self, UdevBackend, UdevEvent},
     },
+    desktop::space::SpaceElement,
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
         calloop::{EventLoop, LoopHandle},
@@ -40,7 +42,10 @@ use smithay_drm_extras::{
 };
 use tracing::{error, info};
 
-use crate::state::{Backend, CalloopData, HoloState};
+use crate::{
+    state::{Backend, CalloopData, HoloState},
+    utils::workspace::{self, Workspace, Workspaces},
+};
 
 pub struct UdevData {
     pub session: LibSeatSession,
@@ -125,20 +130,29 @@ pub fn init_udev() {
 
     let backend = UdevBackend::new(&state.seat_name).unwrap();
     for (device_id, path) in backend.device_list() {
-        state.backend_data.on_udev_event(UdevEvent::Added {
-            device_id,
-            path: path.to_owned(),
-        });
+        state.on_udev_event(
+            UdevEvent::Added {
+                device_id,
+                path: path.to_owned(),
+            },
+            &mut display,
+        );
     }
 
     event_loop
         .handle()
         .insert_source(backend, |event, _, calloopdata| {
-            calloopdata.state.backend_data.on_udev_event(event)
+            calloopdata
+                .state
+                .on_udev_event(event, &mut calloopdata.display)
         })
         .unwrap();
 
     let mut calloopdata = CalloopData { state, display };
+
+    std::env::set_var("WAYLAND_DISPLAY", &calloopdata.state.socket_name);
+
+    std::process::Command::new("alacritty").spawn().ok();
 
     event_loop
         .run(None, &mut calloopdata, move |_| {
@@ -176,23 +190,28 @@ pub fn primary_gpu(seat: &str) -> (DrmNode, PathBuf) {
 }
 
 // Drm
-impl UdevData {
+impl HoloState<UdevData> {
     pub fn on_drm_event(
         &mut self,
         node: DrmNode,
         event: drm::DrmEvent,
         _meta: &mut Option<drm::DrmEventMetadata>,
+        display: &mut Display<HoloState<UdevData>>,
     ) {
         match event {
             drm::DrmEvent::VBlank(crtc) => {
-                if let Some(device) = self.devices.get_mut(&node) {
+                if let Some(device) = self.backend_data.devices.get_mut(&node) {
                     if let Some(surface) = device.surfaces.get_mut(&crtc) {
-                        let mut renderer = if self.primary_gpu == device.render_node {
-                            self.gpus.single_renderer(&device.render_node).unwrap()
+                        let mut renderer = if self.backend_data.primary_gpu == device.render_node {
+                            self.backend_data
+                                .gpus
+                                .single_renderer(&device.render_node)
+                                .unwrap()
                         } else {
-                            self.gpus
+                            self.backend_data
+                                .gpus
                                 .renderer(
-                                    &self.primary_gpu,
+                                    &self.backend_data.primary_gpu,
                                     &device.render_node,
                                     &mut device.gbm_allocator,
                                     surface.gbm_surface.format(),
@@ -201,7 +220,7 @@ impl UdevData {
                         };
 
                         surface.gbm_surface.frame_submitted().unwrap();
-                        surface.next_buffer(&mut renderer);
+                        surface.next_buffer(&mut renderer, &self.workspaces, display);
                     }
                 }
             }
@@ -209,8 +228,13 @@ impl UdevData {
         }
     }
 
-    pub fn on_connector_event(&mut self, node: DrmNode, event: drm_scanner::DrmScanEvent) {
-        let device = if let Some(device) = self.devices.get_mut(&node) {
+    pub fn on_connector_event(
+        &mut self,
+        node: DrmNode,
+        event: drm_scanner::DrmScanEvent,
+        display: &mut Display<HoloState<UdevData>>,
+    ) {
+        let device = if let Some(device) = self.backend_data.devices.get_mut(&node) {
             device
         } else {
             return;
@@ -221,7 +245,11 @@ impl UdevData {
                 connector,
                 crtc: Some(crtc),
             } => {
-                let mut renderer = self.gpus.single_renderer(&device.render_node).unwrap();
+                let mut renderer = self
+                    .backend_data
+                    .gpus
+                    .single_renderer(&device.render_node)
+                    .unwrap();
 
                 let mut surface = Surface::new(
                     crtc,
@@ -235,7 +263,11 @@ impl UdevData {
                     device.gbm.clone(),
                 );
 
-                surface.next_buffer(renderer.as_mut());
+                for workspace in self.workspaces.iter() {
+                    workspace.add_output(surface.output.clone())
+                }
+
+                surface.next_buffer(renderer.as_mut(), &self.workspaces, display);
 
                 device.surfaces.insert(crtc, surface);
             }
@@ -250,17 +282,17 @@ impl UdevData {
 }
 
 // Udev
-impl UdevData {
-    pub fn on_udev_event(&mut self, event: UdevEvent) {
+impl HoloState<UdevData> {
+    pub fn on_udev_event(&mut self, event: UdevEvent, display: &mut Display<HoloState<UdevData>>) {
         match event {
             UdevEvent::Added { device_id, path } => {
                 if let Ok(node) = DrmNode::from_dev_id(device_id) {
-                    self.on_device_added(node, path);
+                    self.on_device_added(node, path, display);
                 }
             }
             UdevEvent::Changed { device_id } => {
                 if let Ok(node) = DrmNode::from_dev_id(device_id) {
-                    self.on_device_changed(node);
+                    self.on_device_changed(node, display);
                 }
             }
             UdevEvent::Removed { device_id } => {
@@ -271,8 +303,14 @@ impl UdevData {
         }
     }
 
-    fn on_device_added(&mut self, node: DrmNode, path: PathBuf) {
+    fn on_device_added(
+        &mut self,
+        node: DrmNode,
+        path: PathBuf,
+        display: &mut Display<HoloState<UdevData>>,
+    ) {
         let fd = self
+            .backend_data
             .session
             .open(
                 &path,
@@ -297,21 +335,22 @@ impl UdevData {
                 None => node,
             };
 
-        self.gpus
+        self.backend_data
+            .gpus
             .as_mut()
             .add_node(render_node, gbm.clone())
             .unwrap();
 
-        self.handle
+        self.backend_data
+            .handle
             .insert_source(drm_notifier, move |event, meta, calloopdata| {
                 calloopdata
                     .state
-                    .backend_data
-                    .on_drm_event(node, event, meta)
+                    .on_drm_event(node, event, meta, &mut calloopdata.display);
             })
             .unwrap();
 
-        self.devices.insert(
+        self.backend_data.devices.insert(
             node,
             Device {
                 drm,
@@ -323,20 +362,23 @@ impl UdevData {
             },
         );
 
-        self.on_device_changed(node);
+        self.on_device_changed(node, display);
     }
 
-    fn on_device_changed(&mut self, node: DrmNode) {
-        if let Some(device) = self.devices.get_mut(&node) {
+    fn on_device_changed(&mut self, node: DrmNode, display: &mut Display<HoloState<UdevData>>) {
+        if let Some(device) = self.backend_data.devices.get_mut(&node) {
             for event in device.drm_scanner.scan_connectors(&device.drm) {
-                self.on_connector_event(node, event);
+                self.on_connector_event(node, event, display);
             }
         }
     }
 
     fn on_device_removed(&mut self, node: DrmNode) {
-        if let Some(device) = self.devices.get_mut(&node) {
-            self.gpus.as_mut().remove_node(&device.render_node);
+        if let Some(device) = self.backend_data.devices.get_mut(&node) {
+            self.backend_data
+                .gpus
+                .as_mut()
+                .remove_node(&device.render_node);
         }
     }
 }
@@ -345,6 +387,7 @@ pub struct Surface {
     pub gbm_surface: GbmBufferedSurface<GbmAllocator<DrmDeviceFd>, ()>,
     pub output: Output,
     pub damage_tracked_renderer: DamageTrackedRenderer,
+    pub start_time: Instant,
 }
 
 impl Surface {
@@ -402,30 +445,50 @@ impl Surface {
 
         let damage_tracked_renderer = DamageTrackedRenderer::from_output(&output);
 
+        let start_time = Instant::now();
+
         Self {
+            start_time,
             gbm_surface,
             output,
             damage_tracked_renderer,
         }
     }
 
-    pub fn next_buffer<R>(&mut self, renderer: &mut R)
-    where
-        R: Renderer + ImportMem + Bind<Dmabuf>,
+    pub fn next_buffer<R>(
+        &mut self,
+        renderer: &mut R,
+        workspaces: &Workspaces,
+        display: &mut Display<HoloState<UdevData>>,
+    ) where
+        R: Renderer + ImportMem + Bind<Dmabuf> + ImportAll,
         R::TextureId: 'static,
     {
         let (dmabuf, age) = self.gbm_surface.next_buffer().unwrap();
         renderer.bind(dmabuf).unwrap();
 
+        let renderelements = workspaces.current().render_elements(renderer);
+
         self.damage_tracked_renderer
-            .render_output::<MemoryRenderBufferRenderElement<R>, _>(
+            .render_output::<WaylandSurfaceRenderElement<R>, _>(
                 renderer,
                 age as usize,
-                &[],
-                [1.0, 0.0, 0.0, 1.0],
+                &renderelements,
+                [0.1, 0.1, 0.1, 1.0],
             )
             .unwrap();
 
         self.gbm_surface.queue_buffer(None, ()).unwrap();
+
+        workspaces.current().windows().for_each(|window| {
+            window.send_frame(
+                &self.output,
+                self.start_time.elapsed(),
+                Some(Duration::ZERO),
+                |_, _| Some(self.output.clone()),
+            );
+        });
+        workspaces.all_windows().for_each(|e| e.refresh());
+        display.flush_clients().unwrap();
     }
 }

@@ -31,7 +31,11 @@ impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
 
     fn new_toplevel(&mut self, surface: smithay::wayland::shell::xdg::ToplevelSurface) {
         let window = Window::new(surface);
-        bsp_layout(self.workspaces.current(), window, WindowLayoutEvent::Added);
+        bsp_layout(
+            self.workspaces.current_mut(),
+            window,
+            WindowLayoutEvent::Added,
+        );
         for holowindow in self.workspaces.current().holowindows() {
             let xdg_toplevel = holowindow.window.toplevel();
             xdg_toplevel.with_pending_state(|state| {
