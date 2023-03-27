@@ -2,7 +2,10 @@ use std::time::Duration;
 
 use smithay::{
     backend::{
-        renderer::{damage::DamageTrackedRenderer, gles2::Gles2Renderer},
+        renderer::{
+            damage::DamageTrackedRenderer, element::surface::WaylandSurfaceRenderElement,
+            gles2::Gles2Renderer,
+        },
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
     desktop::space::SpaceElement,
@@ -141,7 +144,7 @@ pub fn winit_dispatch(
 
     winitdata.backend.bind().unwrap();
 
-    let renderelements = state
+    let renderelements: Vec<WaylandSurfaceRenderElement<_>> = state
         .workspaces
         .current()
         .render_elements(winitdata.backend.renderer());

@@ -69,14 +69,14 @@ impl Workspace {
         self.windows.retain(|w| &w.borrow().window != window);
     }
 
-    pub fn render_elements<'a, R: Renderer + ImportAll>(
+    pub fn render_elements<'a, R: Renderer + ImportAll, C: From<WaylandSurfaceRenderElement<R>>>(
         &self,
         renderer: &mut R,
-    ) -> Vec<WaylandSurfaceRenderElement<R>>
+    ) -> Vec<C>
     where
         <R as Renderer>::TextureId: Texture + 'static,
     {
-        let mut render_elements: Vec<WaylandSurfaceRenderElement<R>> = Vec::new();
+        let mut render_elements: Vec<C> = Vec::new();
         for element in &self.windows {
             render_elements.append(&mut element.borrow().window.render_elements(
                 renderer,

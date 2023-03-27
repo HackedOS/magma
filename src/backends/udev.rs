@@ -17,7 +17,7 @@ use smithay::{
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             damage::DamageTrackedRenderer,
-            element::surface::WaylandSurfaceRenderElement,
+            element::texture::{TextureBuffer, TextureRenderElement},
             gles2::Gles2Renderer,
             multigpu::{gbm::GbmGlesBackend, GpuManager},
             Bind, ImportAll, ImportMem, Renderer,
@@ -34,7 +34,7 @@ use smithay::{
         nix::fcntl::OFlag,
         wayland_server::Display,
     },
-    utils::{DeviceFd, Transform},
+    utils::{DeviceFd, Logical, Point, Scale, Transform},
 };
 use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent},
@@ -44,8 +44,10 @@ use tracing::{error, info};
 
 use crate::{
     state::{Backend, CalloopData, HoloState},
-    utils::workspace::{self, Workspace, Workspaces},
+    utils::{render::CustomRenderElements, workspace::Workspaces},
 };
+
+static CURSOR_DATA: &[u8] = include_bytes!("../../resources/cursor.rgba");
 
 pub struct UdevData {
     pub session: LibSeatSession,
@@ -220,7 +222,12 @@ impl HoloState<UdevData> {
                         };
 
                         surface.gbm_surface.frame_submitted().unwrap();
-                        surface.next_buffer(&mut renderer, &self.workspaces, display);
+                        surface.next_buffer(
+                            &mut renderer,
+                            &self.workspaces,
+                            display,
+                            self.pointer_location,
+                        );
                     }
                 }
             }
@@ -267,7 +274,12 @@ impl HoloState<UdevData> {
                     workspace.add_output(surface.output.clone())
                 }
 
-                surface.next_buffer(renderer.as_mut(), &self.workspaces, display);
+                surface.next_buffer(
+                    renderer.as_mut(),
+                    &self.workspaces,
+                    display,
+                    self.pointer_location,
+                );
 
                 device.surfaces.insert(crtc, surface);
             }
@@ -460,17 +472,40 @@ impl Surface {
         renderer: &mut R,
         workspaces: &Workspaces,
         display: &mut Display<HoloState<UdevData>>,
+        pointer_location: Point<f64, Logical>,
     ) where
         R: Renderer + ImportMem + Bind<Dmabuf> + ImportAll,
-        R::TextureId: 'static,
+        R::TextureId: 'static + Clone,
     {
         let (dmabuf, age) = self.gbm_surface.next_buffer().unwrap();
         renderer.bind(dmabuf).unwrap();
+        let mut renderelements: Vec<CustomRenderElements<_>> = vec![];
 
-        let renderelements = workspaces.current().render_elements(renderer);
+        let pointer_texture = TextureBuffer::from_memory(
+            renderer,
+            CURSOR_DATA,
+            (64, 64),
+            false,
+            1,
+            Transform::Normal,
+            None,
+        )
+        .unwrap();
+
+        renderelements.append(&mut vec![CustomRenderElements::<R>::from(
+            TextureRenderElement::from_texture_buffer(
+                pointer_location.to_physical(Scale::from(1.0)),
+                &pointer_texture,
+                None,
+                None,
+                None,
+            ),
+        )]);
+
+        renderelements.extend(workspaces.current().render_elements(renderer));
 
         self.damage_tracked_renderer
-            .render_output::<WaylandSurfaceRenderElement<R>, _>(
+            .render_output::<CustomRenderElements<R>, _>(
                 renderer,
                 age as usize,
                 &renderelements,
