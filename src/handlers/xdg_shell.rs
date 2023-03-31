@@ -20,7 +20,7 @@ use smithay::{
 
 use crate::{
     state::HoloState,
-    utils::workspaces::{HoloWindow, Workspace},
+    utils::workspaces::{HoloWindow, Workspace, Workspaces},
 };
 
 impl XdgShellHandler for HoloState {
@@ -31,7 +31,8 @@ impl XdgShellHandler for HoloState {
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new(surface);
         let size = self
-            .workspace
+            .workspaces
+            .current()
             .outputs()
             .next()
             .unwrap()
@@ -39,7 +40,8 @@ impl XdgShellHandler for HoloState {
             .unwrap()
             .size
             .to_logical(1);
-        self.workspace
+        self.workspaces
+            .current_mut()
             .add_window(Rc::from(RefCell::from(HoloWindow {
                 window,
                 rec: Rectangle {
@@ -61,9 +63,9 @@ impl XdgShellHandler for HoloState {
 delegate_xdg_shell!(HoloState);
 
 /// Should be called on `WlSurface::commit`
-pub fn handle_commit(workspace: &Workspace, surface: &WlSurface) -> Option<()> {
-    if let Some(window) = workspace
-        .windows()
+pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface) -> Option<()> {
+    if let Some(window) = workspaces
+        .all_windows()
         .find(|w| w.toplevel().wl_surface() == surface)
     {
         let initial_configure_sent = with_states(surface, |states| {

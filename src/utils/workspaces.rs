@@ -146,3 +146,52 @@ impl Workspace {
         self.windows.iter().any(|w| &w.borrow().window == window)
     }
 }
+
+pub struct Workspaces {
+    workspaces: Vec<Workspace>,
+    current: u8,
+}
+
+impl Workspaces {
+    pub fn new(workspaceamount: u8) -> Self {
+        Workspaces {
+            workspaces: (0..workspaceamount).map(|_| Workspace::new()).collect(),
+            current: 0,
+        }
+    }
+
+    pub fn iter(&mut self) -> impl Iterator<Item = &mut Workspace> {
+        self.workspaces.iter_mut()
+    }
+
+    pub fn current_mut(&mut self) -> &mut Workspace {
+        &mut self.workspaces[self.current as usize]
+    }
+
+    pub fn current(&self) -> &Workspace {
+        &self.workspaces[self.current as usize]
+    }
+
+    pub fn all_windows(&self) -> impl Iterator<Item = Ref<'_, Window>> {
+        self.workspaces.iter().flat_map(|w| w.windows())
+    }
+
+    pub fn workspace_from_window(&mut self, window: &Window) -> Option<&mut Workspace> {
+        self.workspaces
+            .iter_mut()
+            .find(|w| w.contains_window(window))
+    }
+
+    pub fn activate(&mut self, id: u8) {
+        self.current = id;
+    }
+    pub fn move_window_to_workspace(&mut self, window: &Window, workspace: u8, gaps: (i32, i32)) {
+        let mut removed = None;
+        if let Some(ws) = self.workspace_from_window(window) {
+            removed = ws.remove_window(window);
+        }
+        if let Some(removed) = removed {
+            self.workspaces[workspace as usize].add_window(removed);
+        }
+    }
+}

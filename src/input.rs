@@ -42,9 +42,9 @@ impl HoloState {
             }
             InputEvent::PointerMotion { .. } => {}
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output = self.workspace.outputs().next().unwrap().clone();
+                let output = self.workspaces.current().outputs().next().unwrap().clone();
 
-                let output_geo = self.workspace.output_geometry(&output).unwrap();
+                let output_geo = self.workspaces.current().output_geometry(&output).unwrap();
 
                 let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
@@ -127,23 +127,24 @@ impl HoloState {
         }
     }
     fn clamp_coords(&self, pos: Point<f64, Logical>) -> Point<f64, Logical> {
-        if self.workspace.outputs().next().is_none() {
+        if self.workspaces.current().outputs().next().is_none() {
             return pos;
         }
 
         let (pos_x, pos_y) = pos.into();
-        let max_x = self.workspace.outputs().fold(0, |acc, o| {
-            acc + self.workspace.output_geometry(o).unwrap().size.w
+        let max_x = self.workspaces.current().outputs().fold(0, |acc, o| {
+            acc + self.workspaces.current().output_geometry(o).unwrap().size.w
         });
         let clamped_x = pos_x.max(0.0).min(max_x as f64);
         let max_y = self
-            .workspace
+            .workspaces
+            .current()
             .outputs()
             .find(|o| {
-                let geo = self.workspace.output_geometry(o).unwrap();
+                let geo = self.workspaces.current().output_geometry(o).unwrap();
                 geo.contains((clamped_x as i32, 0))
             })
-            .map(|o| self.workspace.output_geometry(o).unwrap().size.h);
+            .map(|o| self.workspaces.current().output_geometry(o).unwrap().size.h);
 
         if let Some(max_y) = max_y {
             let clamped_y = pos_y.max(0.0).min(max_y as f64);
