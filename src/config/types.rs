@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use smithay::input::keyboard::{keysyms as KeySyms, xkb, Keysym};
+use smithay::input::keyboard::{keysyms as KeySyms, xkb, Keysym, ModifiersState};
 
 use super::{KeyModifier, KeyModifiers};
 
@@ -70,5 +70,15 @@ impl std::ops::AddAssign<KeyModifier> for KeyModifiers {
             KeyModifier::Super => self.logo = true,
             KeyModifier::CapsLock => self.caps_lock = true,
         };
+    }
+}
+
+impl PartialEq<ModifiersState> for KeyModifiers {
+    fn eq(&self, other: &ModifiersState) -> bool {
+        self.ctrl == other.ctrl
+            && self.alt == other.alt
+            && self.shift == other.shift
+            && self.logo == other.logo
+            && self.caps_lock == other.caps_lock
     }
 }

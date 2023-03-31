@@ -1,7 +1,7 @@
 use smithay::{
     backend::input::{
-        AbsolutePositionEvent, Axis, AxisSource, Event, InputBackend, InputEvent, KeyboardKeyEvent,
-        PointerAxisEvent, PointerButtonEvent,
+        AbsolutePositionEvent, Axis, AxisSource, Event, InputBackend, InputEvent, KeyState,
+        KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
     },
     input::{
         keyboard::FilterResult,
@@ -19,14 +19,26 @@ impl HoloState {
                 let serial = SERIAL_COUNTER.next_serial();
                 let time = Event::time_msec(&event);
 
-                self.seat.get_keyboard().unwrap().input::<(), _>(
+                if let Some(action) = self.seat.get_keyboard().unwrap().input(
                     self,
                     event.key_code(),
                     event.state(),
                     serial,
                     time,
-                    |_, _, _| FilterResult::Forward,
-                );
+                    |data, modifiers, handle| {
+                        for (binding, action) in data.config.keybindings.iter() {
+                            if event.state() == KeyState::Pressed
+                                && binding.modifiers == *modifiers
+                                && handle.raw_syms().contains(&binding.key)
+                            {
+                                return FilterResult::Intercept(action.clone());
+                            }
+                        }
+                        FilterResult::Forward
+                    },
+                ) {
+                    self.handle_action(action);
+                };
             }
             InputEvent::PointerMotion { .. } => {}
             InputEvent::PointerMotionAbsolute { event, .. } => {
