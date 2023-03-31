@@ -5,6 +5,7 @@ mod backends;
 mod handlers;
 mod input;
 mod state;
+mod utils;
 
 fn main() {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {

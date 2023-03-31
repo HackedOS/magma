@@ -5,6 +5,7 @@ pub mod xdg_shell;
 // Wl Seat
 //
 
+use smithay::desktop::Window;
 use smithay::input::{SeatHandler, SeatState};
 use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
 use smithay::wayland::data_device::{
@@ -15,8 +16,8 @@ use smithay::{delegate_data_device, delegate_output, delegate_seat};
 use crate::state::HoloState;
 
 impl SeatHandler for HoloState {
-    type KeyboardFocus = WlSurface;
-    type PointerFocus = WlSurface;
+    type KeyboardFocus = Window;
+    type PointerFocus = Window;
 
     fn seat_state(&mut self) -> &mut SeatState<HoloState> {
         &mut self.seat_state
@@ -28,7 +29,7 @@ impl SeatHandler for HoloState {
         _image: smithay::input::pointer::CursorImageStatus,
     ) {
     }
-    fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&WlSurface>) {}
+    fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&Window>) {}
 }
 
 delegate_seat!(HoloState);

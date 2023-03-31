@@ -22,6 +22,8 @@ use smithay::{
     },
 };
 
+use crate::utils::workspaces::Workspace;
+
 pub struct CalloopData {
     pub display: Display<HoloState>,
     pub state: HoloState,
@@ -31,7 +33,7 @@ pub struct HoloState {
     pub start_time: Instant,
     pub socket_name: OsString,
     pub loop_signal: LoopSignal,
-    pub space: Space<Window>,
+    pub workspace: Workspace,
 
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
@@ -42,6 +44,8 @@ pub struct HoloState {
     pub data_device_state: DataDeviceState,
 
     pub seat: Seat<Self>,
+
+    pub pointer_location: Point<f64, Logical>,
 }
 
 impl HoloState {
@@ -62,7 +66,7 @@ impl HoloState {
         seat.add_keyboard(Default::default(), 200, 200).unwrap();
         seat.add_pointer();
 
-        let space = Space::default();
+        let workspace = Workspace::new();
 
         let socket_name = HoloState::init_wayland_listener(display, event_loop);
 
@@ -70,7 +74,7 @@ impl HoloState {
         Self {
             start_time,
             socket_name,
-            space,
+            workspace,
             compositor_state,
             xdg_shell_state,
             xdg_decoration_state,
@@ -80,6 +84,7 @@ impl HoloState {
             seat_state,
             data_device_state,
             seat,
+            pointer_location: Point::from((0.0, 0.0)),
         }
     }
     fn init_wayland_listener(
@@ -127,18 +132,11 @@ impl HoloState {
         socket_name
     }
 
-    pub fn surface_under_pointer(
-        &self,
-        pointer: &PointerHandle<Self>,
-    ) -> Option<(WlSurface, Point<i32, Logical>)> {
-        let pos = pointer.current_location();
-        self.space
-            .element_under(pos)
-            .and_then(|(window, location)| {
-                window
-                    .surface_under(pos - location.to_f64(), WindowSurfaceType::ALL)
-                    .map(|(s, p)| (s, p + location))
-            })
+    pub fn window_under(&mut self) -> Option<(Window, Point<i32, Logical>)> {
+        let pos = self.pointer_location;
+        self.workspace
+            .window_under(pos)
+            .map(|(w, p)| (w.clone(), p))
     }
 }
 

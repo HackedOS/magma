@@ -1,14 +1,13 @@
 use smithay::{
     backend::input::{
-        AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent,
-        KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent,
+        AbsolutePositionEvent, Axis, AxisSource, Event, InputBackend, InputEvent, KeyboardKeyEvent,
+        PointerAxisEvent, PointerButtonEvent,
     },
     input::{
         keyboard::FilterResult,
         pointer::{AxisFrame, ButtonEvent, MotionEvent},
     },
-    reexports::wayland_server::protocol::wl_surface::WlSurface,
-    utils::SERIAL_COUNTER,
+    utils::{Logical, Point, SERIAL_COUNTER},
 };
 
 use crate::state::HoloState;
@@ -31,9 +30,9 @@ impl HoloState {
             }
             InputEvent::PointerMotion { .. } => {}
             InputEvent::PointerMotionAbsolute { event, .. } => {
-                let output = self.space.outputs().next().unwrap();
+                let output = self.workspace.outputs().next().unwrap().clone();
 
-                let output_geo = self.space.output_geometry(output).unwrap();
+                let output_geo = self.workspace.output_geometry(&output).unwrap();
 
                 let pos = event.position_transformed(output_geo.size) + output_geo.loc.to_f64();
 
@@ -41,7 +40,15 @@ impl HoloState {
 
                 let pointer = self.seat.get_pointer().unwrap();
 
-                let under = self.surface_under_pointer(&pointer);
+                self.pointer_location = self.clamp_coords(pos);
+
+                let under = self.window_under();
+
+                let keyboard = self.seat.get_keyboard().unwrap();
+
+                if let Some(d) = under.clone() {
+                    keyboard.set_focus(self, Some(d.0), serial);
+                }
 
                 pointer.motion(
                     self,
@@ -55,37 +62,12 @@ impl HoloState {
             }
             InputEvent::PointerButton { event, .. } => {
                 let pointer = self.seat.get_pointer().unwrap();
-                let keyboard = self.seat.get_keyboard().unwrap();
 
                 let serial = SERIAL_COUNTER.next_serial();
 
                 let button = event.button_code();
 
                 let button_state = event.state();
-
-                if ButtonState::Pressed == button_state && !pointer.is_grabbed() {
-                    if let Some((window, _loc)) = self
-                        .space
-                        .element_under(pointer.current_location())
-                        .map(|(w, l)| (w.clone(), l))
-                    {
-                        self.space.raise_element(&window, true);
-                        keyboard.set_focus(
-                            self,
-                            Some(window.toplevel().wl_surface().clone()),
-                            serial,
-                        );
-                        self.space.elements().for_each(|window| {
-                            window.toplevel().send_configure();
-                        });
-                    } else {
-                        self.space.elements().for_each(|window| {
-                            window.set_activated(false);
-                            window.toplevel().send_configure();
-                        });
-                        keyboard.set_focus(self, Option::<WlSurface>::None, serial);
-                    }
-                };
 
                 pointer.button(
                     self,
@@ -130,6 +112,32 @@ impl HoloState {
                 self.seat.get_pointer().unwrap().axis(self, frame);
             }
             _ => {}
+        }
+    }
+    fn clamp_coords(&self, pos: Point<f64, Logical>) -> Point<f64, Logical> {
+        if self.workspace.outputs().next().is_none() {
+            return pos;
+        }
+
+        let (pos_x, pos_y) = pos.into();
+        let max_x = self.workspace.outputs().fold(0, |acc, o| {
+            acc + self.workspace.output_geometry(o).unwrap().size.w
+        });
+        let clamped_x = pos_x.max(0.0).min(max_x as f64);
+        let max_y = self
+            .workspace
+            .outputs()
+            .find(|o| {
+                let geo = self.workspace.output_geometry(o).unwrap();
+                geo.contains((clamped_x as i32, 0))
+            })
+            .map(|o| self.workspace.output_geometry(o).unwrap().size.h);
+
+        if let Some(max_y) = max_y {
+            let clamped_y = pos_y.max(0.0).min(max_y as f64);
+            (clamped_x, clamped_y).into()
+        } else {
+            (clamped_x, pos_y).into()
         }
     }
 }

@@ -8,6 +8,7 @@ use smithay::{
         },
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
+    desktop::space::SpaceElement,
     output::{Mode, Output, PhysicalProperties, Subpixel},
     reexports::calloop::{
         timer::{TimeoutAction, Timer},
@@ -50,7 +51,7 @@ pub fn init_winit(
     );
     output.set_preferred(mode);
 
-    state.space.map_output(&output, (0, 0));
+    state.workspace.add_output(output.clone());
 
     let mut damage_tracker = OutputDamageTracker::from_output(&output);
 
@@ -119,18 +120,15 @@ pub fn winit_dispatch(
     let damage = Rectangle::from_loc_and_size((0, 0), size);
 
     backend.bind()?;
-    smithay::desktop::space::render_output::<_, WaylandSurfaceRenderElement<Gles2Renderer>, _, _>(
-        output,
-        backend.renderer(),
-        0,
-        [&state.space],
-        &[],
-        damage_tracker,
-        [0.1, 0.1, 0.1, 1.0],
-    )?;
-    backend.submit(Some(&[damage]))?;
+    let renderelements: Vec<WaylandSurfaceRenderElement<_>> =
+        state.workspace.render_elements(backend.renderer());
+    damage_tracker
+        .render_output(backend.renderer(), 0, &renderelements, [0.1, 0.1, 0.1, 1.0])
+        .unwrap();
 
-    state.space.elements().for_each(|window| {
+    backend.submit(Some(&[damage])).unwrap();
+
+    state.workspace.windows().for_each(|window| {
         window.send_frame(
             output,
             state.start_time.elapsed(),
@@ -139,7 +137,7 @@ pub fn winit_dispatch(
         )
     });
 
-    state.space.refresh();
+    state.workspace.windows().for_each(|e| e.refresh());
     display.flush_clients()?;
 
     Ok(())
