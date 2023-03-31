@@ -10,9 +10,9 @@ use smithay::{
     utils::{Logical, Point, SERIAL_COUNTER},
 };
 
-use crate::state::HoloState;
+use crate::state::{Backend, HoloState};
 
-impl HoloState {
+impl<BackendData: Backend> HoloState<BackendData> {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         match event {
             InputEvent::Keyboard { event, .. } => {

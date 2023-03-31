@@ -14,13 +14,13 @@ use smithay::wayland::data_device::{
 };
 use smithay::{delegate_data_device, delegate_output, delegate_seat};
 
-use crate::state::HoloState;
+use crate::state::{Backend, HoloState};
 
-impl SeatHandler for HoloState {
+impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
     type KeyboardFocus = Window;
     type PointerFocus = Window;
 
-    fn seat_state(&mut self) -> &mut SeatState<HoloState> {
+    fn seat_state(&mut self) -> &mut SeatState<HoloState<BackendData>> {
         &mut self.seat_state
     }
 
@@ -33,25 +33,25 @@ impl SeatHandler for HoloState {
     fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&Window>) {}
 }
 
-delegate_seat!(HoloState);
+delegate_seat!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
 //
 // Wl Data Device
 //
 
-impl DataDeviceHandler for HoloState {
+impl<BackendData: Backend> DataDeviceHandler for HoloState<BackendData> {
     fn data_device_state(&self) -> &smithay::wayland::data_device::DataDeviceState {
         &self.data_device_state
     }
 }
 
-impl ClientDndGrabHandler for HoloState {}
-impl ServerDndGrabHandler for HoloState {}
+impl<BackendData: Backend> ClientDndGrabHandler for HoloState<BackendData> {}
+impl<BackendData: Backend> ServerDndGrabHandler for HoloState<BackendData> {}
 
-delegate_data_device!(HoloState);
+delegate_data_device!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
 //
 // Wl Output & Xdg Output
 //
 
-delegate_output!(HoloState);
+delegate_output!(@<BackendData: Backend + 'static> HoloState<BackendData>);

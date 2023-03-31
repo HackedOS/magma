@@ -23,12 +23,17 @@ use smithay::{
 
 use crate::{config::Config, utils::workspaces::Workspaces};
 
-pub struct CalloopData {
-    pub display: Display<HoloState>,
-    pub state: HoloState,
+pub struct CalloopData<BackendData: Backend + 'static> {
+    pub state: HoloState<BackendData>,
+    pub display: Display<HoloState<BackendData>>,
 }
 
-pub struct HoloState {
+pub trait Backend {
+    fn seat_name(&self) -> String;
+}
+
+pub struct HoloState<BackendData: Backend + 'static> {
+    pub backend_data: BackendData,
     pub config: Config,
 
     pub start_time: Instant,
@@ -41,7 +46,7 @@ pub struct HoloState {
     pub xdg_decoration_state: XdgDecorationState,
     pub shm_state: ShmState,
     pub output_manager_state: OutputManagerState,
-    pub seat_state: SeatState<HoloState>,
+    pub seat_state: SeatState<HoloState<BackendData>>,
     pub data_device_state: DataDeviceState,
 
     pub seat: Seat<Self>,
@@ -49,8 +54,12 @@ pub struct HoloState {
     pub pointer_location: Point<f64, Logical>,
 }
 
-impl HoloState {
-    pub fn new(event_loop: &mut EventLoop<CalloopData>, display: &mut Display<HoloState>) -> Self {
+impl<BackendData: Backend> HoloState<BackendData> {
+    pub fn new(
+        event_loop: &mut EventLoop<CalloopData<BackendData>>,
+        display: &mut Display<HoloState<BackendData>>,
+        backend_data: BackendData,
+    ) -> Self {
         let start_time = Instant::now();
 
         let dh = display.handle();
@@ -71,11 +80,12 @@ impl HoloState {
 
         let workspaces = Workspaces::new(config.workspaces);
 
-        let socket_name = HoloState::init_wayland_listener(display, event_loop);
+        let socket_name = Self::init_wayland_listener(event_loop, display);
 
         let loop_signal = event_loop.get_signal();
 
         Self {
+            backend_data,
             config,
             start_time,
             socket_name,
@@ -93,8 +103,8 @@ impl HoloState {
         }
     }
     fn init_wayland_listener(
-        display: &mut Display<HoloState>,
-        event_loop: &mut EventLoop<CalloopData>,
+        event_loop: &mut EventLoop<CalloopData<BackendData>>,
+        display: &mut Display<HoloState<BackendData>>,
     ) -> OsString {
         // Creates a new listening socket, automatically choosing the next available `wayland` socket name.
         let listening_socket = ListeningSocketSource::new_auto().unwrap();

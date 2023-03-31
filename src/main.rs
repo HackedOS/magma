@@ -1,5 +1,7 @@
-use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 use state::{CalloopData, HoloState};
+use tracing::{error, info};
+
+use crate::backends::winit;
 
 mod backends;
 mod config;
@@ -8,6 +10,10 @@ mod input;
 mod state;
 mod utils;
 
+static POSSIBLE_BACKENDS: &[&str] = &[
+    "--winit : Run holo as a X11 or Wayland client using winit.",
+    "--tty-udev : Run holo as a tty udev client (requires root if without logind).",
+];
 fn main() {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
         tracing_subscriber::fmt().with_env_filter(env_filter).init();
@@ -15,20 +21,28 @@ fn main() {
         tracing_subscriber::fmt().init();
     }
 
-    let mut event_loop: EventLoop<CalloopData> = EventLoop::try_new().unwrap();
+    let arg = ::std::env::args().nth(1);
+    match arg.as_ref().map(|s| &s[..]) {
+        Some("--winit") => {
+            info!("Starting holown with winit backend");
+            winit::init_winit();
+        }
+        Some("--tty-udev") => {
+            info!("Starting holo on a tty using udev");
+            // udev::init_udev();
+        }
+        Some(other) => {
+            error!("Unknown backend: {}", other);
+        }
+        None => {
+            println!("USAGE: holo --backend");
+            println!();
+            println!("Possible backends are:");
+            for b in POSSIBLE_BACKENDS {
+                println!("\t{}", b);
+            }
+        }
+    }
 
-    let mut display: Display<HoloState> = Display::new().unwrap();
-    let state = HoloState::new(&mut event_loop, &mut display);
-
-    let mut data = CalloopData { state, display };
-
-    crate::backends::winit::init_winit(&mut event_loop, &mut data).unwrap();
-
-    std::process::Command::new("alacritty").spawn().ok();
-
-    event_loop
-        .run(None, &mut data, move |_| {
-            // Holo is running
-        })
-        .unwrap();
+    info!("Holo is shutting down");
 }
