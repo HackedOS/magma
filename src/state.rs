@@ -13,8 +13,12 @@ use smithay::{
     },
     utils::{Logical, Point},
     wayland::{
-        compositor::CompositorState, data_device::DataDeviceState, output::OutputManagerState,
-        shell::xdg::XdgShellState, shm::ShmState, socket::ListeningSocketSource,
+        compositor::CompositorState,
+        data_device::DataDeviceState,
+        output::OutputManagerState,
+        shell::xdg::{decoration::XdgDecorationState, XdgShellState},
+        shm::ShmState,
+        socket::ListeningSocketSource,
     },
 };
 
@@ -31,6 +35,7 @@ pub struct HoloState {
 
     pub compositor_state: CompositorState,
     pub xdg_shell_state: XdgShellState,
+    pub xdg_decoration_state: XdgDecorationState,
     pub shm_state: ShmState,
     pub output_manager_state: OutputManagerState,
     pub seat_state: SeatState<HoloState>,
@@ -47,6 +52,7 @@ impl HoloState {
 
         let compositor_state = CompositorState::new::<Self>(&dh);
         let xdg_shell_state = XdgShellState::new::<Self>(&dh);
+        let xdg_decoration_state = XdgDecorationState::new::<Self>(&dh);
         let shm_state = ShmState::new::<Self>(&dh, vec![]);
         let output_manager_state = OutputManagerState::new_with_xdg_output::<Self>(&dh);
         let mut seat_state = SeatState::new();
@@ -67,6 +73,7 @@ impl HoloState {
             space,
             compositor_state,
             xdg_shell_state,
+            xdg_decoration_state,
             loop_signal,
             shm_state,
             output_manager_state,
