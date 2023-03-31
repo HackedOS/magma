@@ -22,7 +22,7 @@ use smithay::{
     },
 };
 
-use crate::utils::workspaces::Workspace;
+use crate::{config::Config, utils::workspaces::Workspace};
 
 pub struct CalloopData {
     pub display: Display<HoloState>,
@@ -30,6 +30,8 @@ pub struct CalloopData {
 }
 
 pub struct HoloState {
+    pub config: Config,
+
     pub start_time: Instant,
     pub socket_name: OsString,
     pub loop_signal: LoopSignal,
@@ -54,6 +56,8 @@ impl HoloState {
 
         let dh = display.handle();
 
+        let config = Config::load();
+
         let compositor_state = CompositorState::new::<Self>(&dh);
         let xdg_shell_state = XdgShellState::new::<Self>(&dh);
         let xdg_decoration_state = XdgDecorationState::new::<Self>(&dh);
@@ -71,7 +75,9 @@ impl HoloState {
         let socket_name = HoloState::init_wayland_listener(display, event_loop);
 
         let loop_signal = event_loop.get_signal();
+
         Self {
+            config,
             start_time,
             socket_name,
             workspace,

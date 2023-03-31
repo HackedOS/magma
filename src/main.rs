@@ -2,11 +2,11 @@ use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 use state::{CalloopData, HoloState};
 
 mod backends;
+mod config;
 mod handlers;
 mod input;
 mod state;
 mod utils;
-
 fn main() {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
         tracing_subscriber::fmt().with_env_filter(env_filter).init();
