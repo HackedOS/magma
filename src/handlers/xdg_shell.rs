@@ -20,7 +20,10 @@ use smithay::{
 
 use crate::{
     state::HoloState,
-    utils::workspaces::{HoloWindow, Workspace, Workspaces},
+    utils::{
+        tiling::{bsp_layout, WindowLayoutEvent},
+        workspaces::{HoloWindow, Workspace, Workspaces},
+    },
 };
 
 impl XdgShellHandler for HoloState {
@@ -30,27 +33,29 @@ impl XdgShellHandler for HoloState {
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new(surface);
-        let size = self
-            .workspaces
-            .current()
-            .outputs()
-            .next()
-            .unwrap()
-            .current_mode()
-            .unwrap()
-            .size
-            .to_logical(1);
-        self.workspaces
-            .current_mut()
-            .add_window(Rc::from(RefCell::from(HoloWindow {
-                window,
-                rec: Rectangle {
-                    loc: (0, 0).into(),
-                    size,
-                },
-            })));
+        bsp_layout(
+            self.workspaces.current_mut(),
+            window,
+            WindowLayoutEvent::Added,
+            self.config.gaps,
+        );
     }
+    fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
+        let window = self
+            .workspaces
+            .all_windows()
+            .find(|w| w.toplevel() == &surface)
+            .unwrap()
+            .clone();
 
+        let workspace = self.workspaces.workspace_from_window(&window).unwrap();
+        bsp_layout(
+            workspace,
+            window,
+            WindowLayoutEvent::Removed,
+            self.config.gaps,
+        );
+    }
     fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
         todo!()
     }

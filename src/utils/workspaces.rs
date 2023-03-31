@@ -13,6 +13,8 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Scale, Transform},
 };
 
+use super::binarytree::BinaryTree;
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct HoloWindow {
     pub window: Window,
@@ -32,6 +34,7 @@ impl HoloWindow {
 pub struct Workspace {
     windows: Vec<Rc<RefCell<HoloWindow>>>,
     outputs: Vec<Output>,
+    pub layout_tree: BinaryTree,
 }
 
 impl Workspace {
@@ -39,6 +42,7 @@ impl Workspace {
         Workspace {
             windows: Vec::new(),
             outputs: Vec::new(),
+            layout_tree: BinaryTree::new(),
         }
     }
 
@@ -57,6 +61,8 @@ impl Workspace {
         self.windows
             .retain(|w| &w.borrow().window != &window.borrow().window);
         self.windows.push(window.clone());
+        self.layout_tree
+            .insert(window, self.layout_tree.next_split(), 0.5);
     }
 
     pub fn remove_window(&mut self, window: &Window) -> Option<Rc<RefCell<HoloWindow>>> {
@@ -69,6 +75,7 @@ impl Workspace {
                 true
             }
         });
+        self.layout_tree.remove(&window);
         removed
     }
 
