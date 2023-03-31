@@ -13,7 +13,7 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Scale, Transform},
 };
 
-use super::binarytree::BinaryTree;
+use super::{binarytree::BinaryTree, tiling::bsp_update_layout};
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct HoloWindow {
@@ -196,9 +196,11 @@ impl Workspaces {
         let mut removed = None;
         if let Some(ws) = self.workspace_from_window(window) {
             removed = ws.remove_window(window);
+            bsp_update_layout(ws, gaps)
         }
         if let Some(removed) = removed {
             self.workspaces[workspace as usize].add_window(removed);
+            bsp_update_layout(&mut self.workspaces[workspace as usize], gaps)
         }
     }
 }
