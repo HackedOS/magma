@@ -115,10 +115,10 @@ pub fn generate_layout(
     let size;
     match split {
         HorizontalOrVertical::Horizontal => {
-            size = Size::from((lastgeo.size.w / 2, lastgeo.size.h));
+            size = Size::from(((lastgeo.size.w as f32 * ratio) as i32, lastgeo.size.h));
         }
         HorizontalOrVertical::Vertical => {
-            size = Size::from((lastgeo.size.w, lastgeo.size.h / 2));
+            size = Size::from((lastgeo.size.w, (lastgeo.size.h as f32 * ratio) as i32));
         }
     }
 
