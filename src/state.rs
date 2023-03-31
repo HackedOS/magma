@@ -1,13 +1,12 @@
 use std::{ffi::OsString, os::fd::AsRawFd, sync::Arc, time::Instant};
 
 use smithay::{
-    desktop::{Space, Window, WindowSurfaceType},
-    input::{pointer::PointerHandle, Seat, SeatState},
+    desktop::Window,
+    input::{Seat, SeatState},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
         wayland_server::{
             backend::{ClientData, ClientId, DisconnectReason},
-            protocol::wl_surface::WlSurface,
             Display,
         },
     },
@@ -22,10 +21,7 @@ use smithay::{
     },
 };
 
-use crate::{
-    config::Config,
-    utils::workspaces::{Workspace, Workspaces},
-};
+use crate::{config::Config, utils::workspaces::Workspaces};
 
 pub struct CalloopData {
     pub display: Display<HoloState>,

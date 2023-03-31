@@ -18,8 +18,8 @@ impl Config {
         let xdg = xdg::BaseDirectories::new().ok();
         let locations = if let Some(base) = xdg {
             vec![
-                base.get_config_file("holowm.ron"),
-                base.get_config_file("holowm/config.ron"),
+                base.get_config_file("holo.ron"),
+                base.get_config_file("holo/config.ron"),
             ]
         } else {
             vec![]

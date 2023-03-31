@@ -138,17 +138,4 @@ impl BinaryTree {
             }
         }
     }
-
-    pub fn last(&self) -> Option<Rc<RefCell<HoloWindow>>> {
-        match self {
-            BinaryTree::Empty => None,
-            BinaryTree::Window(w) => Some(w.clone()),
-            BinaryTree::Split {
-                left,
-                right,
-                split,
-                ratio,
-            } => right.last().or(left.last()),
-        }
-    }
 }

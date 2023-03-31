@@ -1,19 +1,18 @@
-use std::{cell::RefCell, rc::Rc, sync::Mutex};
+use std::sync::Mutex;
 
 use smithay::{
     delegate_xdg_decoration, delegate_xdg_shell,
-    desktop::{Space, Window},
+    desktop::Window,
     reexports::{
         wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode,
         wayland_server::protocol::{wl_seat::WlSeat, wl_surface::WlSurface},
     },
-    utils::{Rectangle, Serial},
+    utils::Serial,
     wayland::{
         compositor::with_states,
         shell::xdg::{
             decoration::XdgDecorationHandler, PopupSurface, PositionerState, ToplevelSurface,
-            XdgShellHandler, XdgShellState, XdgToplevelSurfaceData,
-            XdgToplevelSurfaceRoleAttributes,
+            XdgShellHandler, XdgShellState, XdgToplevelSurfaceRoleAttributes,
         },
     },
 };
@@ -22,7 +21,7 @@ use crate::{
     state::HoloState,
     utils::{
         tiling::{bsp_layout, WindowLayoutEvent},
-        workspaces::{HoloWindow, Workspace, Workspaces},
+        workspaces::Workspaces,
     },
 };
 
@@ -56,11 +55,11 @@ impl XdgShellHandler for HoloState {
             self.config.gaps,
         );
     }
-    fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
+    fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
         todo!()
     }
 
-    fn grab(&mut self, surface: PopupSurface, seat: WlSeat, serial: Serial) {
+    fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
         todo!()
     }
 }

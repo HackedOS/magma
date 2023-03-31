@@ -13,7 +13,6 @@ use super::{
 pub enum WindowLayoutEvent {
     Added,
     Removed,
-    Resized,
 }
 
 pub fn bsp_layout(
@@ -47,7 +46,6 @@ pub fn bsp_layout(
             workspace.remove_window(&window);
             bsp_update_layout(workspace, gaps);
         }
-        WindowLayoutEvent::Resized => todo!(),
     }
     dbg!(workspace.layout_tree.clone());
 }

@@ -8,7 +8,7 @@ pub mod xdg_shell;
 
 use smithay::desktop::Window;
 use smithay::input::{SeatHandler, SeatState};
-use smithay::reexports::wayland_server::protocol::wl_surface::WlSurface;
+
 use smithay::wayland::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, ServerDndGrabHandler,
 };

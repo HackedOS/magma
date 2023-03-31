@@ -7,6 +7,7 @@ mod handlers;
 mod input;
 mod state;
 mod utils;
+
 fn main() {
     if let Ok(env_filter) = tracing_subscriber::EnvFilter::try_from_default_env() {
         tracing_subscriber::fmt().with_env_filter(env_filter).init();
@@ -27,7 +28,7 @@ fn main() {
 
     event_loop
         .run(None, &mut data, move |_| {
-            // HoloState is running
+            // Holo is running
         })
         .unwrap();
 }
