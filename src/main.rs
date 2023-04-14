@@ -1,7 +1,7 @@
 use state::{CalloopData, HoloState};
 use tracing::{error, info};
 
-use crate::backends::winit;
+use crate::backends::{udev, winit};
 
 mod backends;
 mod config;
@@ -29,7 +29,7 @@ fn main() {
         }
         Some("--tty-udev") => {
             info!("Starting holo on a tty using udev");
-            // udev::init_udev();
+            udev::init_udev();
         }
         Some(other) => {
             error!("Unknown backend: {}", other);

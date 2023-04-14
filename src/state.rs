@@ -35,9 +35,9 @@ pub trait Backend {
 pub struct HoloState<BackendData: Backend + 'static> {
     pub backend_data: BackendData,
     pub config: Config,
-
     pub start_time: Instant,
     pub socket_name: OsString,
+    pub seat_name: String,
     pub loop_signal: LoopSignal,
     pub workspaces: Workspaces,
 
@@ -74,7 +74,8 @@ impl<BackendData: Backend> HoloState<BackendData> {
         let mut seat_state = SeatState::new();
         let data_device_state = DataDeviceState::new::<Self>(&dh);
 
-        let mut seat = seat_state.new_wl_seat(&dh, "winit");
+        let seat_name = backend_data.seat_name();
+        let mut seat = seat_state.new_wl_seat(&dh, seat_name.clone());
         seat.add_keyboard(Default::default(), 200, 200).unwrap();
         seat.add_pointer();
 
@@ -88,6 +89,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
             backend_data,
             config,
             start_time,
+            seat_name,
             socket_name,
             workspaces,
             compositor_state,
