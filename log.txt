@@ -1,0 +1,198 @@
+   Compiling holo v0.1.0 (/home/hackos/holo)
+    Finished dev [unoptimized + debuginfo] target(s) in 6.29s
+     Running `target/debug/holo --tty-udev`
+[2m2023-04-14T10:30:46.609575Z[0m [32m INFO[0m [2mholo[0m[2m:[0m Starting holo on a tty using udev
+[2m2023-04-14T10:30:46.617403Z[0m [32m INFO[0m [2mholo::backends::udev[0m[2m:[0m Using renderD128 as primary gpu.
+[src/config/mod.rs:29] "Trying config location: {}" = "Trying config location: {}"
+[src/config/mod.rs:29] path.display() = "/home/hackos/.config/holo.ron"
+[src/config/mod.rs:29] "Trying config location: {}" = "Trying config location: {}"
+[src/config/mod.rs:29] path.display() = "/home/hackos/.config/holo/config.ron"
+[src/config/mod.rs:31] "Using config at {}" = "Using config at {}"
+[src/config/mod.rs:31] path.display() = "/home/hackos/.config/holo/config.ron"
+[2m2023-04-14T10:30:46.618040Z[0m [32m INFO[0m [1minput_seat[0m[1m{[0m[3mname[0m[2m=[0m"seat0"[1m}[0m[2m:[0m[1madd_keyboard[0m[1m{[0m[3mxkb_config[0m[2m=[0mXkbConfig { rules: "", model: "", layout: "", variant: "", options: None } [3mrepeat_delay[0m[2m=[0m200 [3mrepeat_rate[0m[2m=[0m200[1m}[0m[2m:[0m[1minput_keyboard[0m[2m:[0m [2msmithay::input::keyboard[0m[2m:[0m Initializing a xkbcommon handler with keymap query
+[2m2023-04-14T10:30:46.620353Z[0m [32m INFO[0m [1minput_seat[0m[1m{[0m[3mname[0m[2m=[0m"seat0"[1m}[0m[2m:[0m[1madd_keyboard[0m[1m{[0m[3mxkb_config[0m[2m=[0mXkbConfig { rules: "", model: "", layout: "", variant: "", options: None } [3mrepeat_delay[0m[2m=[0m200 [3mrepeat_rate[0m[2m=[0m200[1m}[0m[2m:[0m[1minput_keyboard[0m[2m:[0m [2msmithay::input::keyboard[0m[2m:[0m Loaded Keymap [3mname[0m[2m=[0m"English (US)"
+[2m2023-04-14T10:30:46.621085Z[0m [32m INFO[0m [2msmithay::wayland::socket[0m[2m:[0m Created new socket [3mname[0m[2m=[0mSome("wayland-1")
+[2m2023-04-14T10:30:47.077852Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m Initializing a libinput backend
+[2m2023-04-14T10:30:47.079422Z[0m [33m WARN[0m [2msmithay::backend::drm::device::fd[0m[2m:[0m Unable to become drm master, assuming unprivileged mode
+[2m2023-04-14T10:30:47.079443Z[0m [32m INFO[0m [2msmithay::backend::drm::device[0m[2m:[0m DrmDevice initializing
+[2m2023-04-14T10:30:47.079494Z[0m [32m INFO[0m [2msmithay::backend::drm::device[0m[2m:[0m Falling back to LegacyDrmDevice
+[2m2023-04-14T10:30:47.108907Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m Successfully selected EGL platform: PLATFORM_GBM_KHR
+[2m2023-04-14T10:30:47.109737Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m EGL Initialized
+[2m2023-04-14T10:30:47.109763Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m EGL Version: (1, 5)
+[2m2023-04-14T10:30:47.109825Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m Supported EGL display extensions: ["EGL_ANDROID_blob_cache", "EGL_EXT_buffer_age", "EGL_EXT_create_context_robustness", "EGL_EXT_image_dma_buf_import", "EGL_EXT_image_dma_buf_import_modifiers", "EGL_KHR_cl_event2", "EGL_KHR_config_attribs", "EGL_KHR_context_flush_control", "EGL_KHR_create_context", "EGL_KHR_create_context_no_error", "EGL_KHR_fence_sync", "EGL_KHR_get_all_proc_addresses", "EGL_KHR_gl_colorspace", "EGL_KHR_gl_renderbuffer_image", "EGL_KHR_gl_texture_2D_image", "EGL_KHR_gl_texture_3D_image", "EGL_KHR_gl_texture_cubemap_image", "EGL_KHR_image", "EGL_KHR_image_base", "EGL_KHR_image_pixmap", "EGL_KHR_no_config_context", "EGL_KHR_reusable_sync", "EGL_KHR_surfaceless_context", "EGL_EXT_pixel_format_float", "EGL_KHR_wait_sync", "EGL_MESA_configless_context", "EGL_MESA_drm_image", "EGL_MESA_image_dma_buf_export", "EGL_MESA_query_driver", "EGL_WL_bind_wayland_display", ""]
+[2m2023-04-14T10:30:47.110589Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m Successfully selected EGL platform: PLATFORM_GBM_KHR
+[2m2023-04-14T10:30:47.111282Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m EGL Initialized
+[2m2023-04-14T10:30:47.111304Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m EGL Version: (1, 5)
+[2m2023-04-14T10:30:47.111338Z[0m [32m INFO[0m [2msmithay::backend::egl::display[0m[2m:[0m Supported EGL display extensions: ["EGL_ANDROID_blob_cache", "EGL_EXT_buffer_age", "EGL_EXT_create_context_robustness", "EGL_EXT_image_dma_buf_import", "EGL_EXT_image_dma_buf_import_modifiers", "EGL_KHR_cl_event2", "EGL_KHR_config_attribs", "EGL_KHR_context_flush_control", "EGL_KHR_create_context", "EGL_KHR_create_context_no_error", "EGL_KHR_fence_sync", "EGL_KHR_get_all_proc_addresses", "EGL_KHR_gl_colorspace", "EGL_KHR_gl_renderbuffer_image", "EGL_KHR_gl_texture_2D_image", "EGL_KHR_gl_texture_3D_image", "EGL_KHR_gl_texture_cubemap_image", "EGL_KHR_image", "EGL_KHR_image_base", "EGL_KHR_image_pixmap", "EGL_KHR_no_config_context", "EGL_KHR_reusable_sync", "EGL_KHR_surfaceless_context", "EGL_EXT_pixel_format_float", "EGL_KHR_wait_sync", "EGL_MESA_configless_context", "EGL_MESA_drm_image", "EGL_MESA_image_dma_buf_export", "EGL_MESA_query_driver", "EGL_WL_bind_wayland_display", ""]
+[2m2023-04-14T10:30:47.198861Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m [2msmithay::backend::egl::context[0m[2m:[0m EGL context created
+[2m2023-04-14T10:30:47.200427Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m[1mrenderer_gles2[0m[2m:[0m [2msmithay::backend::renderer::gles2[0m[2m:[0m Initializing OpenGL ES Renderer
+[2m2023-04-14T10:30:47.200458Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m[1mrenderer_gles2[0m[2m:[0m [2msmithay::backend::renderer::gles2[0m[2m:[0m GL Version: "OpenGL ES 3.2 Mesa 23.0.1"
+[2m2023-04-14T10:30:47.200483Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m[1mrenderer_gles2[0m[2m:[0m [2msmithay::backend::renderer::gles2[0m[2m:[0m GL Vendor: "Mesa"
+[2m2023-04-14T10:30:47.200504Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m[1mrenderer_gles2[0m[2m:[0m [2msmithay::backend::renderer::gles2[0m[2m:[0m GL Renderer: "NV106"
+[2m2023-04-14T10:30:47.200523Z[0m [32m INFO[0m [1megl[0m[1m{[0m[3mnative[0m[2m=[0m"/dev/dri/card0" [3mplatform[0m[2m=[0m"PLATFORM_GBM_KHR" [3mversion[0m[2m=[0m(1, 5)[1m}[0m[2m:[0m[1megl_context[0m[1m{[0m[3mptr[0m[2m=[0m93908699348464[1m}[0m[2m:[0m[1mrenderer_gles2[0m[2m:[0m [2msmithay::backend::renderer::gles2[0m[2m:[0m Supported GL Extensions: ["GL_EXT_blend_minmax", "GL_EXT_multi_draw_arrays", "GL_EXT_texture_filter_anisotropic", "GL_EXT_texture_compression_s3tc", "GL_EXT_texture_compression_dxt1", "GL_EXT_texture_compression_rgtc", "GL_EXT_texture_format_BGRA8888", "GL_OES_compressed_ETC1_RGB8_texture", "GL_OES_depth24", "GL_OES_element_index_uint", "GL_OES_fbo_render_mipmap", "GL_OES_mapbuffer", "GL_OES_rgb8_rgba8", "GL_OES_standard_derivatives", "GL_OES_stencil8", "GL_OES_texture_3D", "GL_OES_texture_float", "GL_OES_texture_float_linear", "GL_OES_texture_half_float", "GL_OES_texture_half_float_linear", "GL_OES_texture_npot", "GL_OES_vertex_half_float", "GL_EXT_draw_instanced", "GL_EXT_texture_sRGB_decode", "GL_OES_EGL_image", "GL_OES_depth_texture", "GL_AMD_performance_monitor", "GL_OES_packed_depth_stencil", "GL_EXT_texture_type_2_10_10_10_REV", "GL_NV_conditional_render", "GL_OES_get_program_binary", "GL_APPLE_texture_max_level", "GL_EXT_discard_framebuffer", "GL_EXT_read_format_bgra", "GL_NV_pack_subimage", "GL_EXT_frag_depth", "GL_NV_fbo_color_attachments", "GL_OES_EGL_image_external", "GL_OES_EGL_sync", "GL_OES_vertex_array_object", "GL_OES_viewport_array", "GL_ANGLE_pack_reverse_row_order", "GL_ANGLE_texture_compression_dxt3", "GL_ANGLE_texture_compression_dxt5", "GL_EXT_occlusion_query_boolean", "GL_EXT_robustness", "GL_EXT_texture_rg", "GL_EXT_unpack_subimage", "GL_NV_draw_buffers", "GL_NV_read_buffer", "GL_NV_read_depth", "GL_NV_read_depth_stencil", "GL_NV_read_stencil", "GL_EXT_draw_buffers", "GL_EXT_map_buffer_range", "GL_KHR_debug", "GL_KHR_robustness", "GL_KHR_texture_compression_astc_ldr", "GL_NV_pixel_buffer_object", "GL_OES_depth_texture_cube_map", "GL_OES_required_internalformat", "GL_OES_surfaceless_context", "GL_EXT_color_buffer_float", "GL_EXT_debug_label", "GL_EXT_sRGB_write_control", "GL_EXT_separate_shader_objects", "GL_EXT_shader_group_vote", "GL_EXT_shader_implicit_conversions", "GL_EXT_shader_integer_mix", "GL_EXT_tessellation_point_size", "GL_EXT_tessellation_shader", "GL_ANDROID_extension_pack_es31a", "GL_EXT_base_instance", "GL_EXT_compressed_ETC1_RGB8_sub_texture", "GL_EXT_copy_image", "GL_EXT_draw_buffers_indexed", "GL_EXT_draw_elements_base_vertex", "GL_EXT_gpu_shader5", "GL_EXT_polygon_offset_clamp", "GL_EXT_primitive_bounding_box", "GL_EXT_render_snorm", "GL_EXT_shader_io_blocks", "GL_EXT_texture_border_clamp", "GL_EXT_texture_buffer", "GL_EXT_texture_cube_map_array", "GL_EXT_texture_norm16", "GL_EXT_texture_view", "GL_KHR_blend_equation_advanced", "GL_KHR_context_flush_control", "GL_KHR_robust_buffer_access_behavior", "GL_NV_image_formats", "GL_NV_shader_noperspective_interpolation", "GL_OES_copy_image", "GL_OES_draw_buffers_indexed", "GL_OES_draw_elements_base_vertex", "GL_OES_gpu_shader5", "GL_OES_primitive_bounding_box", "GL_OES_sample_shading", "GL_OES_sample_variables", "GL_OES_shader_io_blocks", "GL_OES_shader_multisample_interpolation", "GL_OES_tessellation_point_size", "GL_OES_tessellation_shader", "GL_OES_texture_border_clamp", "GL_OES_texture_buffer", "GL_OES_texture_cube_map_array", "GL_OES_texture_stencil8", "GL_OES_texture_storage_multisample_2d_array", "GL_OES_texture_view", "GL_EXT_blend_func_extended", "GL_EXT_buffer_storage", "GL_EXT_float_blend", "GL_EXT_geometry_point_size", "GL_EXT_geometry_shader", "GL_EXT_texture_sRGB_R8", "GL_KHR_no_error", "GL_KHR_texture_compression_astc_sliced_3d", "GL_OES_EGL_image_external_essl3", "GL_OES_geometry_point_size", "GL_OES_geometry_shader", "GL_OES_shader_image_atomic", "GL_EXT_clear_texture", "GL_EXT_clip_cull_distance", "GL_EXT_disjoint_timer_query", "GL_EXT_texture_compression_s3tc_srgb", "GL_EXT_window_rectangles", "GL_MESA_shader_integer_functions", "GL_EXT_clip_control", "GL_EXT_color_buffer_half_float", "GL_EXT_texture_compression_bptc", "GL_EXT_texture_mirror_clamp_to_edge", "GL_KHR_parallel_shader_compile", "GL_EXT_EGL_image_storage", "GL_EXT_texture_shadow_lod", "GL_MESA_framebuffer_flip_y", "GL_EXT_demote_to_helper_invocation", "GL_EXT_depth_clamp", "GL_EXT_texture_query_lod", "GL_MESA_bgra", ""]
+[2m2023-04-14T10:30:47.206870Z[0m [32m INFO[0m [1mdrm_legacy[0m[2m:[0m[1mcreate_surface[0m[1m{[0m[3mcrtc[0m[2m=[0mcrtc::Handle(50) [3mmode[0m[2m=[0mMode { name: "1366x768", clock: 85500, size: (1366, 768), hsync: (1436, 1579, 1792), vsync: (771, 774, 798), hskew: 0, vscan: 0, vrefresh: 60, mode_type: PREFERRED | DRIVER } [3mconnectors[0m[2m=[0m[connector::Handle(87)][1m}[0m[2m:[0m[1mdrm_legacy[0m[1m{[0m[3mcrtc[0m[2m=[0mcrtc::Handle(50)[1m}[0m[2m:[0m [2msmithay::backend::drm::surface::legacy[0m[2m:[0m Initializing drm surface [3mmode[0m[2m=[0mMode { name: "1366x768", clock: 85500, size: (1366, 768), hsync: (1436, 1579, 1792), vsync: (771, 774, 798), hskew: 0, vscan: 0, vrefresh: 60, mode_type: PREFERRED | DRIVER } [3mconnectors[0m[2m=[0m[connector::Handle(87)] [3mcrtc[0m[2m=[0mcrtc::Handle(50)
+[2m2023-04-14T10:30:47.230928Z[0m [32m INFO[0m [1mnew[0m[1m{[0m[3mname[0m[2m=[0m"HDMI-A-1" [3mphysical[0m[2m=[0mPhysicalProperties { size: Size<Raw> { w: 410, h: 230 }, subpixel: Unknown, make: "\u{b}\0\u{10}", model: "D1918H" }[1m}[0m[2m:[0m [2msmithay::output[0m[2m:[0m Creating new Output [3mname[0m[2m=[0m"HDMI-A-1"
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Rectangle<Logical> {
+    x: 10,
+    y: 10,
+    width: 1346,
+    height: 748,
+}
+[2m2023-04-14T10:30:47.833669Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m New device "event2"
+[2m2023-04-14T10:30:47.833713Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m New device "event1"
+[2m2023-04-14T10:30:47.833730Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m New device "event0"
+[2m2023-04-14T10:30:47.833748Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m New device "event5"
+[2m2023-04-14T10:30:47.833761Z[0m [32m INFO[0m [2msmithay::backend::libinput[0m[2m:[0m New device "event6"
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Horizontal,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+    right: Rectangle<Logical> {
+        x: 688,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Horizontal,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+    right: Split {
+        split: Vertical,
+        ratio: 0.5,
+        left: Rectangle<Logical> {
+            x: 688,
+            y: 10,
+            width: 668,
+            height: 369,
+        },
+        right: Rectangle<Logical> {
+            x: 688,
+            y: 389,
+            width: 668,
+            height: 369,
+        },
+    },
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Horizontal,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+    right: Split {
+        split: Vertical,
+        ratio: 0.5,
+        left: Rectangle<Logical> {
+            x: 688,
+            y: 10,
+            width: 668,
+            height: 369,
+        },
+        right: Split {
+            split: Horizontal,
+            ratio: 0.5,
+            left: Rectangle<Logical> {
+                x: 688,
+                y: 389,
+                width: 329,
+                height: 369,
+            },
+            right: Rectangle<Logical> {
+                x: 1027,
+                y: 389,
+                width: 329,
+                height: 369,
+            },
+        },
+    },
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Vertical,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 1346,
+        height: 369,
+    },
+    right: Split {
+        split: Horizontal,
+        ratio: 0.5,
+        left: Rectangle<Logical> {
+            x: 10,
+            y: 389,
+            width: 668,
+            height: 369,
+        },
+        right: Rectangle<Logical> {
+            x: 688,
+            y: 389,
+            width: 668,
+            height: 369,
+        },
+    },
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Horizontal,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+    right: Rectangle<Logical> {
+        x: 688,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Rectangle<Logical> {
+    x: 10,
+    y: 10,
+    width: 1346,
+    height: 748,
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Empty
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Rectangle<Logical> {
+    x: 10,
+    y: 10,
+    width: 1346,
+    height: 748,
+}
+[src/utils/tiling.rs:50] workspace.layout_tree.clone() = Split {
+    split: Horizontal,
+    ratio: 0.5,
+    left: Rectangle<Logical> {
+        x: 10,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+    right: Rectangle<Logical> {
+        x: 688,
+        y: 10,
+        width: 668,
+        height: 748,
+    },
+}
+Error: "Event loop terminated with code: 1"
+[2m2023-04-14T10:32:47.966451Z[0m [31mERROR[0m [1mdrm_legacy[0m[2m:[0m [2msmithay::backend::drm::device::legacy[0m[2m:[0m Failed to reset crtc (crtc::Handle(50)). Error: permission denied
+[2m2023-04-14T10:32:47.966527Z[0m [32m INFO[0m [2msmithay::backend::drm::device::fd[0m[2m:[0m Dropping device: Some("/dev/dri/card0")
+[2m2023-04-14T10:32:47.966634Z[0m [32m INFO[0m [2mholo[0m[2m:[0m Holo is shutting down
