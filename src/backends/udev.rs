@@ -275,6 +275,7 @@ impl HoloState<UdevData> {
                         .clone(),
                     &device.drm,
                     device.gbm.clone(),
+                    display,
                 );
 
                 for workspace in self.workspaces.iter() {
@@ -416,6 +417,7 @@ impl Surface {
         formats: HashSet<Format>,
         drm: &drm::DrmDevice,
         gbm: gbm::GbmDevice<DrmDeviceFd>,
+        display: &mut Display<HoloState<UdevData>>,
     ) -> Self {
         let mode_id = connector
             .modes()
@@ -457,7 +459,7 @@ impl Surface {
                 model,
             },
         );
-
+        let _global = output.create_global::<HoloState<UdevData>>(&display.handle());
         let output_mode = WlMode::from(drm_mode);
         output.set_preferred(output_mode);
         output.change_current_state(
