@@ -2,7 +2,7 @@ use std::sync::Mutex;
 
 use smithay::{
     delegate_xdg_decoration, delegate_xdg_shell,
-    desktop::Window,
+    desktop::{Window, PopupKind, PopupManager},
     reexports::{
         wayland_protocols::xdg::decoration::zv1::server::zxdg_toplevel_decoration_v1::Mode,
         wayland_server::protocol::{wl_seat::WlSeat, wl_surface::WlSurface},
@@ -12,10 +12,11 @@ use smithay::{
         compositor::with_states,
         shell::xdg::{
             decoration::XdgDecorationHandler, PopupSurface, PositionerState, ToplevelSurface,
-            XdgShellHandler, XdgShellState, XdgToplevelSurfaceRoleAttributes,
+            XdgShellHandler, XdgShellState, XdgToplevelSurfaceRoleAttributes, XdgPopupSurfaceData,
         },
     },
 };
+use tracing::warn;
 
 use crate::{
     state::{Backend, HoloState},
@@ -55,8 +56,14 @@ impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
             self.config.gaps,
         );
     }
-    fn new_popup(&mut self, _surface: PopupSurface, _positioner: PositionerState) {
-        todo!()
+    fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
+        surface.with_pending_state(|state| {
+
+            state.geometry = positioner.get_geometry();
+        });
+        if let Err(err) = self.popup_manager.track_popup(PopupKind::from(surface)) {
+            warn!("Failed to track popup: {}", err);
+        }
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
@@ -67,7 +74,7 @@ impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
 delegate_xdg_shell!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
 /// Should be called on `WlSurface::commit`
-pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface) -> Option<()> {
+pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface, popup_manager: &PopupManager) -> Option<()> {
     if let Some(window) = workspaces
         .all_windows()
         .find(|w| w.toplevel().wl_surface() == surface)
@@ -85,6 +92,26 @@ pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface) -> Option<()>
             window.toplevel().send_configure();
         }
     }
+
+    if let Some(popup) = popup_manager.find_popup(surface) {
+        let PopupKind::Xdg(ref popup) = popup;
+        let initial_configure_sent = with_states(surface, |states| {
+            states
+                .data_map
+                .get::<XdgPopupSurfaceData>()
+                .unwrap()
+                .lock()
+                .unwrap()
+                .initial_configure_sent
+        });
+        if !initial_configure_sent {
+            // NOTE: This should never fail as the initial configure is always
+            // allowed.
+            popup.send_configure().expect("initial configure failed");
+        }
+    };
+
+
 
     Some(())
 }

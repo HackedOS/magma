@@ -170,5 +170,6 @@ pub fn winit_dispatch(
     });
 
     state.workspaces.all_windows().for_each(|e| e.refresh());
+    data.state.popup_manager.cleanup();
     display.flush_clients().unwrap();
 }

@@ -25,7 +25,7 @@ use smithay::{
         session::{libseat::LibSeatSession, Session},
         udev::{self, UdevBackend, UdevEvent},
     },
-    desktop::space::SpaceElement,
+    desktop::{space::SpaceElement, PopupManager},
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
         calloop::{EventLoop, LoopHandle},
@@ -234,6 +234,7 @@ impl HoloState<UdevData> {
                             &mut self.workspaces,
                             display,
                             self.pointer_location,
+                            &mut self.popup_manager
                         );
                     }
                 }
@@ -287,6 +288,7 @@ impl HoloState<UdevData> {
                     &mut self.workspaces,
                     display,
                     self.pointer_location,
+                    &mut self.popup_manager
                 );
 
                 device.surfaces.insert(crtc, surface);
@@ -487,6 +489,7 @@ impl Surface {
         workspaces: &mut Workspaces,
         display: &mut Display<HoloState<UdevData>>,
         pointer_location: Point<f64, Logical>,
+        popup_manager: &mut PopupManager,
     ) where
         R: Renderer + ImportMem + Bind<Dmabuf> + ImportAll,
         R::TextureId: 'static + Clone,
@@ -538,6 +541,7 @@ impl Surface {
             );
         });
         workspaces.all_windows().for_each(|e| e.refresh());
+        popup_manager.cleanup();
         display.flush_clients().unwrap();
     }
 }

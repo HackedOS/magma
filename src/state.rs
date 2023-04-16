@@ -1,7 +1,7 @@
 use std::{ffi::OsString, os::fd::AsRawFd, sync::Arc, time::Instant};
 
 use smithay::{
-    desktop::Window,
+    desktop::{Window, PopupManager},
     input::{Seat, SeatState},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
@@ -48,6 +48,7 @@ pub struct HoloState<BackendData: Backend + 'static> {
     pub output_manager_state: OutputManagerState,
     pub seat_state: SeatState<HoloState<BackendData>>,
     pub data_device_state: DataDeviceState,
+    pub popup_manager: PopupManager,
 
     pub seat: Seat<Self>,
 
@@ -102,6 +103,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
             data_device_state,
             seat,
             pointer_location: Point::from((0.0, 0.0)),
+            popup_manager: PopupManager::default(),
         }
     }
     fn init_wayland_listener(

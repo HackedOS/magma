@@ -33,8 +33,8 @@ impl<BackendData: Backend> CompositorHandler for HoloState<BackendData> {
                 window.on_commit();
             }
         };
-
-        xdg_shell::handle_commit(&self.workspaces, surface);
+        self.popup_manager.commit(surface);
+        xdg_shell::handle_commit(&self.workspaces, surface, &self.popup_manager);
     }
 }
 
