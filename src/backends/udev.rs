@@ -161,8 +161,6 @@ pub fn init_udev() {
 
     std::env::set_var("WAYLAND_DISPLAY", &calloopdata.state.socket_name);
 
-    std::process::Command::new("alacritty").spawn().ok();
-
     event_loop
         .run(None, &mut calloopdata, move |_| {
             // HoloWM is running
