@@ -6,13 +6,16 @@ pub mod xdg_shell;
 // Wl Seat
 //
 
-use smithay::desktop::Window;
+use smithay::desktop::{Window, layer_map_for_output, LayerSurface};
 use smithay::input::{SeatHandler, SeatState};
 
+use smithay::output::Output;
+use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::wayland::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, ServerDndGrabHandler,
 };
-use smithay::{delegate_data_device, delegate_output, delegate_seat};
+use smithay::wayland::shell::wlr_layer::{WlrLayerShellHandler, WlrLayerShellState, LayerSurface as WlrLayerSurface, Layer};
+use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell};
 
 use crate::state::{Backend, HoloState};
 
@@ -55,3 +58,25 @@ delegate_data_device!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 //
 
 delegate_output!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+
+impl<BackendData: Backend> WlrLayerShellHandler for HoloState<BackendData>{
+    fn shell_state(&mut self) -> &mut WlrLayerShellState {
+        &mut self.layer_shell_state
+    }
+
+    fn new_layer_surface(
+        &mut self,
+        surface: WlrLayerSurface,
+        output: Option<WlOutput>,
+        _layer: Layer,
+        namespace: String,
+    ) {
+        let output = output.as_ref().and_then(Output::from_resource).unwrap_or_else(|| {
+            self.workspaces.current_mut().outputs().next().unwrap().clone()
+        });
+        let mut map = layer_map_for_output(&output);
+        map.map_layer(&LayerSurface::new(surface, namespace)).unwrap();
+    }
+}
+
+delegate_layer_shell!(@<BackendData: Backend + 'static> HoloState<BackendData>);

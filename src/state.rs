@@ -15,7 +15,7 @@ use smithay::{
         compositor::CompositorState,
         data_device::DataDeviceState,
         output::OutputManagerState,
-        shell::xdg::{decoration::XdgDecorationState, XdgShellState},
+        shell::{xdg::{decoration::XdgDecorationState, XdgShellState}, wlr_layer::WlrLayerShellState},
         shm::ShmState,
         socket::ListeningSocketSource,
     },
@@ -49,7 +49,7 @@ pub struct HoloState<BackendData: Backend + 'static> {
     pub seat_state: SeatState<HoloState<BackendData>>,
     pub data_device_state: DataDeviceState,
     pub popup_manager: PopupManager,
-
+    pub layer_shell_state: WlrLayerShellState,
     pub seat: Seat<Self>,
 
     pub pointer_location: Point<f64, Logical>,
@@ -74,7 +74,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
         let output_manager_state = OutputManagerState::new_with_xdg_output::<Self>(&dh);
         let mut seat_state = SeatState::new();
         let data_device_state = DataDeviceState::new::<Self>(&dh);
-
+        let layer_shell_state = WlrLayerShellState::new::<Self>(&dh);
         let seat_name = backend_data.seat_name();
         let mut seat = seat_state.new_wl_seat(&dh, seat_name.clone());
         seat.add_keyboard(Default::default(), 600, 25).unwrap();
@@ -101,6 +101,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
             output_manager_state,
             seat_state,
             data_device_state,
+            layer_shell_state,
             seat,
             pointer_location: Point::from((0.0, 0.0)),
             popup_manager: PopupManager::default(),

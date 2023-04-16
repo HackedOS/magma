@@ -17,7 +17,7 @@ use smithay::{
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             damage::OutputDamageTracker,
-            element::texture::{TextureBuffer, TextureRenderElement},
+            element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles2::Gles2Renderer,
             multigpu::{gbm::GbmGlesBackend, GpuManager},
             Bind, ImportAll, ImportMem, Renderer,
@@ -25,7 +25,7 @@ use smithay::{
         session::{libseat::LibSeatSession, Session},
         udev::{self, UdevBackend, UdevEvent},
     },
-    desktop::{space::SpaceElement, PopupManager},
+    desktop::{space::SpaceElement, PopupManager, layer_map_for_output, LayerSurface},
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
         calloop::{EventLoop, LoopHandle},
@@ -34,7 +34,7 @@ use smithay::{
         nix::fcntl::OFlag,
         wayland_server::Display,
     },
-    utils::{DeviceFd, Logical, Point, Scale, Transform},
+    utils::{DeviceFd, Logical, Point, Scale, Transform}, wayland::shell::wlr_layer::Layer,
 };
 use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent},
@@ -517,7 +517,53 @@ impl Surface {
             ),
         )]);
 
+        let layer_map = layer_map_for_output(&self.output);
+        let (lower, upper): (Vec<&LayerSurface>, Vec<&LayerSurface>) = layer_map
+            .layers()
+            .rev()
+            .partition(|s| matches!(s.layer(), Layer::Background | Layer::Bottom));
+
+        renderelements.extend(
+            upper
+                .into_iter()
+                .filter_map(|surface| {
+                    layer_map
+                        .layer_geometry(surface)
+                        .map(|geo| (geo.loc, surface))
+                })
+                .flat_map(|(loc, surface)| {
+                    AsRenderElements::<R>::render_elements::<WaylandSurfaceRenderElement<R>>(
+                        surface,
+                        renderer,
+                        loc.to_physical_precise_round(1),
+                        Scale::from(1.0),
+                    )
+                    .into_iter()
+                    .map(CustomRenderElements::Surface)
+                }),
+        );
+
         renderelements.extend(workspaces.current().render_elements(renderer));
+
+        renderelements.extend(
+            lower
+                .into_iter()
+                .filter_map(|surface| {
+                    layer_map
+                        .layer_geometry(surface)
+                        .map(|geo| (geo.loc, surface))
+                })
+                .flat_map(|(loc, surface)| {
+                    AsRenderElements::<R>::render_elements::<WaylandSurfaceRenderElement<R>>(
+                        surface,
+                        renderer,
+                        loc.to_physical_precise_round(1),
+                        Scale::from(1.0),
+                    )
+                    .into_iter()
+                    .map(CustomRenderElements::Surface)
+                }),
+        );
 
         self.output_damage_tracker
             .render_output::<CustomRenderElements<R>, _>(
@@ -538,6 +584,14 @@ impl Surface {
                 |_, _| Some(self.output.clone()),
             );
         });
+        for layer_surface in layer_map.layers() {
+            layer_surface.send_frame(
+                &self.output,
+                self.start_time.elapsed(),
+                Some(Duration::ZERO),
+                |_, _| Some(self.output.clone()),
+            );
+        }
         workspaces.all_windows().for_each(|e| e.refresh());
         popup_manager.cleanup();
         display.flush_clients().unwrap();

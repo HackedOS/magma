@@ -3,12 +3,12 @@ use std::time::Duration;
 use smithay::{
     backend::{
         renderer::{
-            damage::OutputDamageTracker, element::surface::WaylandSurfaceRenderElement,
+            damage::OutputDamageTracker, element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles2::Gles2Renderer,
         },
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
-    desktop::space::SpaceElement,
+    desktop::{space::SpaceElement, layer_map_for_output, LayerSurface},
     output::{Mode, Output, PhysicalProperties, Subpixel},
     reexports::{
         calloop::{
@@ -17,7 +17,7 @@ use smithay::{
         },
         wayland_server::Display,
     },
-    utils::{Rectangle, Transform},
+    utils::{Rectangle, Transform, Scale}, wayland::shell::wlr_layer::Layer,
 };
 
 pub struct WinitData {
@@ -144,10 +144,54 @@ pub fn winit_dispatch(
 
     winitdata.backend.bind().unwrap();
 
-    let renderelements: Vec<WaylandSurfaceRenderElement<_>> = state
-        .workspaces
-        .current()
-        .render_elements(winitdata.backend.renderer());
+    let mut renderelements: Vec<WaylandSurfaceRenderElement<_>> = vec![];
+
+    let workspace = state.workspaces.current_mut();
+    let output = workspace.outputs().next().unwrap();
+    let layer_map = layer_map_for_output(&output);
+    let (lower, upper): (Vec<&LayerSurface>, Vec<&LayerSurface>) = layer_map
+        .layers()
+        .rev()
+        .partition(|s| matches!(s.layer(), Layer::Background | Layer::Bottom));
+
+    renderelements.extend(
+        upper
+            .into_iter()
+            .filter_map(|surface| {
+                layer_map
+                    .layer_geometry(surface)
+                    .map(|geo| (geo.loc, surface))
+            })
+            .flat_map(|(loc, surface)| {
+                AsRenderElements::<Gles2Renderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
+                    surface,
+                    winitdata.backend.renderer(),
+                    loc.to_physical_precise_round(1),
+                    Scale::from(1.0),
+                )
+            }),
+    );
+
+    renderelements.extend(workspace
+        .render_elements(winitdata.backend.renderer()));
+
+    renderelements.extend(
+        lower
+            .into_iter()
+            .filter_map(|surface| {
+                layer_map
+                    .layer_geometry(surface)
+                    .map(|geo| (geo.loc, surface))
+            })
+            .flat_map(|(loc, surface)| {
+                AsRenderElements::<Gles2Renderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
+                    surface,
+                    winitdata.backend.renderer(),
+                    loc.to_physical_precise_round(1),
+                    Scale::from(1.0),
+                )
+            }),
+    );
     winitdata
         .damage_tracker
         .render_output(
@@ -160,7 +204,7 @@ pub fn winit_dispatch(
 
     winitdata.backend.submit(Some(&[damage])).unwrap();
 
-    state.workspaces.current().windows().for_each(|window| {
+    workspace.windows().for_each(|window| {
         window.send_frame(
             output,
             state.start_time.elapsed(),
@@ -169,7 +213,7 @@ pub fn winit_dispatch(
         )
     });
 
-    state.workspaces.all_windows().for_each(|e| e.refresh());
-    data.state.popup_manager.cleanup();
+    workspace.windows().for_each(|e| e.refresh());
+    state.popup_manager.cleanup();
     display.flush_clients().unwrap();
 }
