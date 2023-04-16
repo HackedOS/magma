@@ -77,7 +77,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
 
         let seat_name = backend_data.seat_name();
         let mut seat = seat_state.new_wl_seat(&dh, seat_name.clone());
-        seat.add_keyboard(Default::default(), 200, 200).unwrap();
+        seat.add_keyboard(Default::default(), 600, 25).unwrap();
         seat.add_pointer();
 
         let workspaces = Workspaces::new(config.workspaces);
