@@ -10,10 +10,12 @@ use smithay::desktop::{layer_map_for_output, LayerSurface};
 use smithay::input::{SeatHandler, SeatState};
 
 use smithay::output::Output;
+use smithay::reexports::wayland_server::Resource;
 use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::wayland::data_device::{
-    ClientDndGrabHandler, DataDeviceHandler, ServerDndGrabHandler,
+    ClientDndGrabHandler, DataDeviceHandler, ServerDndGrabHandler, set_data_device_focus,
 };
+use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::wlr_layer::{WlrLayerShellHandler, WlrLayerShellState, LayerSurface as WlrLayerSurface, Layer};
 use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell};
 
@@ -34,7 +36,14 @@ impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
         _image: smithay::input::pointer::CursorImageStatus,
     ) {
     }
-    fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&FocusTarget>) {}
+    fn focus_changed(&mut self, seat: &smithay::input::Seat<Self>, focused: Option<&FocusTarget>) {
+        let dh = &self.dh;
+
+        let focus = focused
+            .and_then(WaylandFocus::wl_surface)
+            .and_then(|s| dh.get_client(s.id()).ok());
+        set_data_device_focus(dh, seat, focus.clone());
+    }
 }
 
 delegate_seat!(@<BackendData: Backend + 'static> HoloState<BackendData>);

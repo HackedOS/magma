@@ -7,7 +7,7 @@ use smithay::{
         calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
         wayland_server::{
             backend::{ClientData, ClientId, DisconnectReason},
-            Display,
+            Display, DisplayHandle,
         },
     },
     utils::{Logical, Point},
@@ -33,6 +33,7 @@ pub trait Backend {
 }
 
 pub struct HoloState<BackendData: Backend + 'static> {
+    pub dh: DisplayHandle,
     pub backend_data: BackendData,
     pub config: Config,
     pub start_time: Instant,
@@ -87,6 +88,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
         let loop_signal = event_loop.get_signal();
 
         Self {
+            dh,
             backend_data,
             config,
             start_time,
