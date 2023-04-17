@@ -125,15 +125,13 @@ pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface, popup_manager
                 .unwrap()
                 .initial_configure_sent
         });
+        let mut map = layer_map_for_output(output);
 
+        // arrange the layers before sending the initial configure
+        // to respect any size the client may have sent
+        map.arrange();
         // send the initial configure if relevant
         if !initial_configure_sent {
-            let mut map = layer_map_for_output(output);
-
-            // arrange the layers before sending the initial configure
-            // to respect any size the client may have sent
-            map.arrange();
-
             let layer = map
                 .layer_for_surface(surface, WindowSurfaceType::TOPLEVEL)
                 .unwrap();
