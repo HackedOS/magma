@@ -15,9 +15,10 @@ use smithay::reexports::wayland_server::protocol::wl_output::WlOutput;
 use smithay::wayland::data_device::{
     ClientDndGrabHandler, DataDeviceHandler, ServerDndGrabHandler, set_data_device_focus,
 };
+use smithay::wayland::primary_selection::{PrimarySelectionHandler, set_primary_focus};
 use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::wlr_layer::{WlrLayerShellHandler, WlrLayerShellState, LayerSurface as WlrLayerSurface, Layer};
-use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell};
+use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell, delegate_primary_selection};
 
 use crate::state::{Backend, HoloState};
 use crate::utils::focus::FocusTarget;
@@ -43,6 +44,7 @@ impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
             .and_then(WaylandFocus::wl_surface)
             .and_then(|s| dh.get_client(s.id()).ok());
         set_data_device_focus(dh, seat, focus.clone());
+        set_primary_focus(dh, seat, focus);
     }
 }
 
@@ -62,6 +64,14 @@ impl<BackendData: Backend> ClientDndGrabHandler for HoloState<BackendData> {}
 impl<BackendData: Backend> ServerDndGrabHandler for HoloState<BackendData> {}
 
 delegate_data_device!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+
+impl<BackendData:Backend> PrimarySelectionHandler for HoloState<BackendData> {
+    fn primary_selection_state(&self) -> &smithay::wayland::primary_selection::PrimarySelectionState {
+        &self.primary_selection_state
+    }
+}
+
+delegate_primary_selection!(@<BackendData: Backend + 'static> HoloState<BackendData>);
 
 //
 // Wl Output & Xdg Output
