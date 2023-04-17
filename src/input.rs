@@ -10,7 +10,7 @@ use smithay::{
     utils::{Logical, Point, SERIAL_COUNTER},
 };
 
-use crate::state::{Backend, HoloState};
+use crate::{state::{Backend, HoloState}, utils::focus::FocusTarget};
 
 impl<BackendData: Backend> HoloState<BackendData> {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
@@ -51,10 +51,8 @@ impl<BackendData: Backend> HoloState<BackendData> {
 
                 let under = self.surface_under();
 
-                let keyboard = self.seat.get_keyboard().unwrap();
-
                 if let Some(d) = under.clone() {
-                    keyboard.set_focus(self, Some(d.0), serial);
+                    self.set_input_focus(d.0);
                 }
 
                 if let Some(ptr) = self.seat.get_pointer() {
@@ -94,10 +92,8 @@ impl<BackendData: Backend> HoloState<BackendData> {
 
                 let under = self.surface_under();
 
-                let keyboard = self.seat.get_keyboard().unwrap();
-
                 if let Some(d) = under.clone() {
-                    keyboard.set_focus(self, Some(d.0), serial);
+                    self.set_input_focus(d.0);
                 }
 
                 pointer.motion(
@@ -195,4 +191,11 @@ impl<BackendData: Backend> HoloState<BackendData> {
             (clamped_x, pos_y).into()
         }
     }
+
+    pub fn set_input_focus(&mut self, target: FocusTarget){
+            let keyboard = self.seat.get_keyboard().unwrap();
+            let serial = SERIAL_COUNTER.next_serial();
+            keyboard.set_focus(self, Some(target), serial);
+    }
 }
+
