@@ -18,10 +18,11 @@ use smithay::wayland::shell::wlr_layer::{WlrLayerShellHandler, WlrLayerShellStat
 use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell};
 
 use crate::state::{Backend, HoloState};
+use crate::utils::focus::FocusTarget;
 
 impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
-    type KeyboardFocus = Window;
-    type PointerFocus = Window;
+    type KeyboardFocus = FocusTarget;
+    type PointerFocus = FocusTarget;
 
     fn seat_state(&mut self) -> &mut SeatState<HoloState<BackendData>> {
         &mut self.seat_state
@@ -33,7 +34,7 @@ impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
         _image: smithay::input::pointer::CursorImageStatus,
     ) {
     }
-    fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&Window>) {}
+    fn focus_changed(&mut self, _seat: &smithay::input::Seat<Self>, _focused: Option<&FocusTarget>) {}
 }
 
 delegate_seat!(@<BackendData: Backend + 'static> HoloState<BackendData>);

@@ -1,7 +1,7 @@
 use std::{ffi::OsString, os::fd::AsRawFd, sync::Arc, time::Instant};
 
 use smithay::{
-    desktop::{Window, PopupManager},
+    desktop::{Window, PopupManager, layer_map_for_output},
     input::{Seat, SeatState},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
@@ -15,13 +15,13 @@ use smithay::{
         compositor::CompositorState,
         data_device::DataDeviceState,
         output::OutputManagerState,
-        shell::{xdg::{decoration::XdgDecorationState, XdgShellState}, wlr_layer::WlrLayerShellState},
+        shell::{xdg::{decoration::XdgDecorationState, XdgShellState}, wlr_layer::{WlrLayerShellState, Layer as WlrLayer}},
         shm::ShmState,
         socket::ListeningSocketSource,
     },
 };
 
-use crate::{config::Config, utils::workspaces::Workspaces};
+use crate::{config::Config, utils::{workspaces::Workspaces, focus::FocusTarget}};
 
 pub struct CalloopData<BackendData: Backend + 'static> {
     pub state: HoloState<BackendData>,
@@ -158,6 +158,33 @@ impl<BackendData: Backend> HoloState<BackendData> {
             .current()
             .window_under(pos)
             .map(|(w, p)| (w.clone(), p))
+    }
+    pub fn surface_under(&self) -> Option<(FocusTarget, Point<i32, Logical>)> {
+        let pos = self.pointer_location;
+        let output = self.workspaces.current().outputs().find(|o| {
+            let geometry = self.workspaces.current().output_geometry(o).unwrap();
+            geometry.contains(pos.to_i32_round())
+        })?;
+        let output_geo = self.workspaces.current().output_geometry(output).unwrap();
+        let layers = layer_map_for_output(output);
+
+        let mut under = None;
+        if let Some(layer) = layers
+            .layer_under(WlrLayer::Overlay, pos)
+            .or_else(|| layers.layer_under(WlrLayer::Top, pos))
+        {
+            let layer_loc = layers.layer_geometry(layer).unwrap().loc;
+            under = Some((layer.clone().into(), output_geo.loc + layer_loc))
+        } else if let Some((window, location)) = self.workspaces.current().window_under(pos) {
+            under = Some((window.clone().into(), location));
+        } else if let Some(layer) = layers
+            .layer_under(WlrLayer::Bottom, pos)
+            .or_else(|| layers.layer_under(WlrLayer::Background, pos))
+        {
+            let layer_loc = layers.layer_geometry(layer).unwrap().loc;
+            under = Some((layer.clone().into(), output_geo.loc + layer_loc));
+        };
+        under
     }
 }
 
