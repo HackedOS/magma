@@ -72,7 +72,7 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     ) {
         match self {
             FocusTarget::Window(w) => PointerTarget::relative_motion(w, seat, data, event),
-            FocusTarget::LayerSurface(l) => PointerTarget::relative_motion(l.wl_surface(), seat, data, event),
+            FocusTarget::LayerSurface(l) => PointerTarget::relative_motion(l, seat, data, event),
             FocusTarget::Popup(p) => PointerTarget::relative_motion(p.wl_surface(), seat, data, event),
         }
     }

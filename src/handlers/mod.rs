@@ -6,7 +6,7 @@ pub mod xdg_shell;
 // Wl Seat
 //
 
-use smithay::desktop::{Window, layer_map_for_output, LayerSurface};
+use smithay::desktop::{layer_map_for_output, LayerSurface};
 use smithay::input::{SeatHandler, SeatState};
 
 use smithay::output::Output;
