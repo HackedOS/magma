@@ -115,6 +115,11 @@ impl<BackendData: Backend> HoloState<BackendData> {
 
                 let button_state = event.state();
 
+                let under = self.surface_under();
+                if let Some(d) = under.clone() {
+                    self.set_input_focus(d.0);
+                }
+
                 pointer.button(
                     self,
                     &ButtonEvent {
