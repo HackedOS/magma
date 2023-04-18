@@ -2,10 +2,10 @@ use tracing::info;
 
 use crate::{
     config::Action,
-    state::{Backend, HoloState},
+    state::{Backend, MagmaState},
 };
 
-impl<BackendData: Backend> HoloState<BackendData> {
+impl<BackendData: Backend> MagmaState<BackendData> {
     pub fn handle_action(&mut self, action: Action) {
         match action {
             Action::Quit => self.loop_signal.stop(),

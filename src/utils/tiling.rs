@@ -7,7 +7,7 @@ use smithay::{
 
 use super::{
     binarytree::{BinaryTree, HorizontalOrVertical},
-    workspaces::{HoloWindow, Workspace},
+    workspaces::{MagmaWindow, Workspace},
 };
 
 pub enum WindowLayoutEvent {
@@ -31,7 +31,7 @@ pub fn bsp_layout(
 
     match event {
         WindowLayoutEvent::Added => {
-            let window = Rc::new(RefCell::new(HoloWindow {
+            let window = Rc::new(RefCell::new(MagmaWindow {
                 window,
                 rec: Rectangle {
                     loc: Point::from((gaps.0, gaps.0)),
@@ -94,10 +94,10 @@ pub fn bsp_update_layout(workspace: &mut Workspace, gaps: (i32, i32)) {
             }
         }
     }
-    for holowindow in workspace.holowindows() {
-        let xdg_toplevel = holowindow.window.toplevel();
+    for magmawindow in workspace.magmawindows() {
+        let xdg_toplevel = magmawindow.window.toplevel();
         xdg_toplevel.with_pending_state(|state| {
-            state.size = Some(holowindow.rec.size);
+            state.size = Some(magmawindow.rec.size);
         });
         xdg_toplevel.send_configure();
     }
@@ -105,7 +105,7 @@ pub fn bsp_update_layout(workspace: &mut Workspace, gaps: (i32, i32)) {
 
 pub fn generate_layout(
     tree: &mut BinaryTree,
-    lastwin: &Rc<RefCell<HoloWindow>>,
+    lastwin: &Rc<RefCell<MagmaWindow>>,
     lastgeo: Rectangle<i32, Logical>,
     split: HorizontalOrVertical,
     ratio: f32,

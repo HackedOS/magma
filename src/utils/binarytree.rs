@@ -2,12 +2,12 @@ use smithay::desktop::Window;
 use std::fmt::Debug;
 use std::{cell::RefCell, rc::Rc};
 
-use super::workspaces::HoloWindow;
+use super::workspaces::MagmaWindow;
 
 #[derive(Clone)]
 pub enum BinaryTree {
     Empty,
-    Window(Rc<RefCell<HoloWindow>>),
+    Window(Rc<RefCell<MagmaWindow>>),
     Split {
         split: HorizontalOrVertical,
         ratio: f32,
@@ -50,7 +50,7 @@ impl BinaryTree {
 
     pub fn insert(
         &mut self,
-        window: Rc<RefCell<HoloWindow>>,
+        window: Rc<RefCell<MagmaWindow>>,
         splitnew: HorizontalOrVertical,
         rationew: f32,
     ) {

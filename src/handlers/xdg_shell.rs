@@ -19,14 +19,14 @@ use smithay::{
 use tracing::warn;
 
 use crate::{
-    state::{Backend, HoloState},
+    state::{Backend, MagmaState},
     utils::{
         tiling::{bsp_layout, WindowLayoutEvent},
         workspaces::Workspaces,
     },
 };
 
-impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
+impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
     fn xdg_shell_state(&mut self) -> &mut XdgShellState {
         &mut self.xdg_shell_state
     }
@@ -71,7 +71,7 @@ impl<BackendData: Backend> XdgShellHandler for HoloState<BackendData> {
     }
 }
 
-delegate_xdg_shell!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_xdg_shell!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
 /// Should be called on `WlSurface::commit`
 pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface, popup_manager: &PopupManager) -> Option<()> {
@@ -144,7 +144,7 @@ pub fn handle_commit(workspaces: &Workspaces, surface: &WlSurface, popup_manager
 }
 
 // Disable decorations
-impl<BackendData: Backend> XdgDecorationHandler for HoloState<BackendData> {
+impl<BackendData: Backend> XdgDecorationHandler for MagmaState<BackendData> {
     fn new_decoration(&mut self, toplevel: ToplevelSurface) {
         toplevel.with_pending_state(|state| {
             // Advertise server side decoration
@@ -163,4 +163,4 @@ impl<BackendData: Backend> XdgDecorationHandler for HoloState<BackendData> {
     fn unset_mode(&mut self, _toplevel: ToplevelSurface) {}
 }
 
-delegate_xdg_decoration!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_xdg_decoration!(@<BackendData: Backend + 'static> MagmaState<BackendData>);

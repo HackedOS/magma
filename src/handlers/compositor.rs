@@ -9,11 +9,11 @@ use smithay::{
     },
 };
 
-use crate::state::{Backend, HoloState};
+use crate::state::{Backend, MagmaState};
 
 use super::xdg_shell;
 
-impl<BackendData: Backend> CompositorHandler for HoloState<BackendData> {
+impl<BackendData: Backend> CompositorHandler for MagmaState<BackendData> {
     fn compositor_state(&mut self) -> &mut CompositorState {
         &mut self.compositor_state
     }
@@ -38,9 +38,9 @@ impl<BackendData: Backend> CompositorHandler for HoloState<BackendData> {
     }
 }
 
-delegate_compositor!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_compositor!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
-impl<BackendData: Backend> BufferHandler for HoloState<BackendData> {
+impl<BackendData: Backend> BufferHandler for MagmaState<BackendData> {
     fn buffer_destroyed(
         &mut self,
         _buffer: &smithay::reexports::wayland_server::protocol::wl_buffer::WlBuffer,
@@ -48,10 +48,10 @@ impl<BackendData: Backend> BufferHandler for HoloState<BackendData> {
     }
 }
 
-impl<BackendData: Backend> ShmHandler for HoloState<BackendData> {
+impl<BackendData: Backend> ShmHandler for MagmaState<BackendData> {
     fn shm_state(&self) -> &ShmState {
         &self.shm_state
     }
 }
 
-delegate_shm!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_shm!(@<BackendData: Backend + 'static> MagmaState<BackendData>);

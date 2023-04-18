@@ -16,11 +16,11 @@ use smithay::{
 use super::{binarytree::BinaryTree, tiling::bsp_update_layout};
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct HoloWindow {
+pub struct MagmaWindow {
     pub window: Window,
     pub rec: Rectangle<i32, Logical>,
 }
-impl HoloWindow {
+impl MagmaWindow {
     fn bbox(&self) -> Rectangle<i32, Logical> {
         let mut bbox = self.window.bbox();
         bbox.loc += self.rec.loc - self.window.geometry().loc;
@@ -32,7 +32,7 @@ impl HoloWindow {
     }
 }
 pub struct Workspace {
-    windows: Vec<Rc<RefCell<HoloWindow>>>,
+    windows: Vec<Rc<RefCell<MagmaWindow>>>,
     outputs: Vec<Output>,
     pub layout_tree: BinaryTree,
 }
@@ -52,11 +52,11 @@ impl Workspace {
             .map(|w| Ref::map(w.borrow(), |hw| &hw.window))
     }
 
-    pub fn holowindows(&self) -> impl Iterator<Item = Ref<'_, HoloWindow>> {
+    pub fn magmawindows(&self) -> impl Iterator<Item = Ref<'_, MagmaWindow>> {
         self.windows.iter().map(|w| Ref::map(w.borrow(), |hw| hw))
     }
 
-    pub fn add_window(&mut self, window: Rc<RefCell<HoloWindow>>) {
+    pub fn add_window(&mut self, window: Rc<RefCell<MagmaWindow>>) {
         // add window to vec and remap if exists
         self.windows
             .retain(|w| &w.borrow().window != &window.borrow().window);
@@ -65,7 +65,7 @@ impl Workspace {
             .insert(window, self.layout_tree.next_split(), 0.5);
     }
 
-    pub fn remove_window(&mut self, window: &Window) -> Option<Rc<RefCell<HoloWindow>>> {
+    pub fn remove_window(&mut self, window: &Window) -> Option<Rc<RefCell<MagmaWindow>>> {
         let mut removed = None;
         self.windows.retain(|w| {
             if &w.borrow().window == window {

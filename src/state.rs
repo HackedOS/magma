@@ -24,15 +24,15 @@ use smithay::{
 use crate::{config::Config, utils::{workspaces::Workspaces, focus::FocusTarget}};
 
 pub struct CalloopData<BackendData: Backend + 'static> {
-    pub state: HoloState<BackendData>,
-    pub display: Display<HoloState<BackendData>>,
+    pub state: MagmaState<BackendData>,
+    pub display: Display<MagmaState<BackendData>>,
 }
 
 pub trait Backend {
     fn seat_name(&self) -> String;
 }
 
-pub struct HoloState<BackendData: Backend + 'static> {
+pub struct MagmaState<BackendData: Backend + 'static> {
     pub dh: DisplayHandle,
     pub backend_data: BackendData,
     pub config: Config,
@@ -47,7 +47,7 @@ pub struct HoloState<BackendData: Backend + 'static> {
     pub xdg_decoration_state: XdgDecorationState,
     pub shm_state: ShmState,
     pub output_manager_state: OutputManagerState,
-    pub seat_state: SeatState<HoloState<BackendData>>,
+    pub seat_state: SeatState<MagmaState<BackendData>>,
     pub data_device_state: DataDeviceState,
     pub primary_selection_state: PrimarySelectionState,
     pub popup_manager: PopupManager,
@@ -57,10 +57,10 @@ pub struct HoloState<BackendData: Backend + 'static> {
     pub pointer_location: Point<f64, Logical>,
 }
 
-impl<BackendData: Backend> HoloState<BackendData> {
+impl<BackendData: Backend> MagmaState<BackendData> {
     pub fn new(
         event_loop: &mut EventLoop<CalloopData<BackendData>>,
-        display: &mut Display<HoloState<BackendData>>,
+        display: &mut Display<MagmaState<BackendData>>,
         backend_data: BackendData,
     ) -> Self {
         let start_time = Instant::now();
@@ -114,7 +114,7 @@ impl<BackendData: Backend> HoloState<BackendData> {
     }
     fn init_wayland_listener(
         event_loop: &mut EventLoop<CalloopData<BackendData>>,
-        display: &mut Display<HoloState<BackendData>>,
+        display: &mut Display<MagmaState<BackendData>>,
     ) -> OsString {
         // Creates a new listening socket, automatically choosing the next available `wayland` socket name.
         let listening_socket = ListeningSocketSource::new_auto().unwrap();

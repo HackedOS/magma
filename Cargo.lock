@@ -419,19 +419,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed44880c466736ef9a5c5b5facefb5ed0785676d0c02d612db14e54f0d84286"
 
 [[package]]
-name = "holo"
-version = "0.1.0"
-dependencies = [
- "ron",
- "serde",
- "smithay",
- "smithay-drm-extras",
- "tracing",
- "tracing-subscriber",
- "xdg",
-]
-
-[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -588,6 +575,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abb12e687cfb44aa40f41fc3978ef76448f9b6038cad6aef4259d3c095a2382e"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "magma"
+version = "0.1.0"
+dependencies = [
+ "ron",
+ "serde",
+ "smithay",
+ "smithay-drm-extras",
+ "tracing",
+ "tracing-subscriber",
+ "xdg",
 ]
 
 [[package]]

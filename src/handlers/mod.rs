@@ -20,14 +20,14 @@ use smithay::wayland::seat::WaylandFocus;
 use smithay::wayland::shell::wlr_layer::{WlrLayerShellHandler, WlrLayerShellState, LayerSurface as WlrLayerSurface, Layer};
 use smithay::{delegate_data_device, delegate_output, delegate_seat, delegate_layer_shell, delegate_primary_selection};
 
-use crate::state::{Backend, HoloState};
+use crate::state::{Backend, MagmaState};
 use crate::utils::focus::FocusTarget;
 
-impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
+impl<BackendData: Backend> SeatHandler for MagmaState<BackendData> {
     type KeyboardFocus = FocusTarget;
     type PointerFocus = FocusTarget;
 
-    fn seat_state(&mut self) -> &mut SeatState<HoloState<BackendData>> {
+    fn seat_state(&mut self) -> &mut SeatState<MagmaState<BackendData>> {
         &mut self.seat_state
     }
 
@@ -48,38 +48,38 @@ impl<BackendData: Backend> SeatHandler for HoloState<BackendData> {
     }
 }
 
-delegate_seat!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_seat!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
 //
 // Wl Data Device
 //
 
-impl<BackendData: Backend> DataDeviceHandler for HoloState<BackendData> {
+impl<BackendData: Backend> DataDeviceHandler for MagmaState<BackendData> {
     fn data_device_state(&self) -> &smithay::wayland::data_device::DataDeviceState {
         &self.data_device_state
     }
 }
 
-impl<BackendData: Backend> ClientDndGrabHandler for HoloState<BackendData> {}
-impl<BackendData: Backend> ServerDndGrabHandler for HoloState<BackendData> {}
+impl<BackendData: Backend> ClientDndGrabHandler for MagmaState<BackendData> {}
+impl<BackendData: Backend> ServerDndGrabHandler for MagmaState<BackendData> {}
 
-delegate_data_device!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_data_device!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
-impl<BackendData:Backend> PrimarySelectionHandler for HoloState<BackendData> {
+impl<BackendData:Backend> PrimarySelectionHandler for MagmaState<BackendData> {
     fn primary_selection_state(&self) -> &smithay::wayland::primary_selection::PrimarySelectionState {
         &self.primary_selection_state
     }
 }
 
-delegate_primary_selection!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_primary_selection!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
 //
 // Wl Output & Xdg Output
 //
 
-delegate_output!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_output!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
-impl<BackendData: Backend> WlrLayerShellHandler for HoloState<BackendData>{
+impl<BackendData: Backend> WlrLayerShellHandler for MagmaState<BackendData>{
     fn shell_state(&mut self) -> &mut WlrLayerShellState {
         &mut self.layer_shell_state
     }
@@ -112,4 +112,4 @@ impl<BackendData: Backend> WlrLayerShellHandler for HoloState<BackendData>{
     }
 }
 
-delegate_layer_shell!(@<BackendData: Backend + 'static> HoloState<BackendData>);
+delegate_layer_shell!(@<BackendData: Backend + 'static> MagmaState<BackendData>);

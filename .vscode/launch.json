@@ -7,15 +7,15 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'holo'",
+            "name": "Debug executable 'magma'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=holo",
-                    "--package=holo"
+                    "--bin=magma",
+                    "--package=magma"
                 ],
                 "filter": {
-                    "name": "holo",
+                    "name": "magma",
                     "kind": "bin"
                 }
             },
@@ -25,16 +25,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'holo'",
+            "name": "Debug unit tests in executable 'magma'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=holo",
-                    "--package=holo"
+                    "--bin=magma",
+                    "--package=magma"
                 ],
                 "filter": {
-                    "name": "holo",
+                    "name": "magma",
                     "kind": "bin"
                 }
             },

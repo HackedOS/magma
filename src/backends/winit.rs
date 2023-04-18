@@ -30,12 +30,12 @@ impl Backend for WinitData {
         "winit".to_string()
     }
 }
-use crate::{state::Backend, CalloopData, HoloState};
+use crate::{state::Backend, CalloopData, MagmaState};
 
 pub fn init_winit() {
     let mut event_loop: EventLoop<CalloopData<WinitData>> = EventLoop::try_new().unwrap();
 
-    let mut display: Display<HoloState<WinitData>> = Display::new().unwrap();
+    let mut display: Display<MagmaState<WinitData>> = Display::new().unwrap();
 
     let (backend, mut winit) = winit::init().unwrap();
 
@@ -53,7 +53,7 @@ pub fn init_winit() {
             model: "Winit".into(),
         },
     );
-    let _global = output.create_global::<HoloState<WinitData>>(&display.handle());
+    let _global = output.create_global::<MagmaState<WinitData>>(&display.handle());
     output.change_current_state(
         Some(mode),
         Some(Transform::Flipped180),
@@ -68,7 +68,7 @@ pub fn init_winit() {
         backend,
         damage_tracker: damage_tracked_renderer,
     };
-    let state = HoloState::new(&mut event_loop, &mut display, winitdata);
+    let state = MagmaState::new(&mut event_loop, &mut display, winitdata);
 
     let mut data = CalloopData {
         display,
@@ -98,7 +98,7 @@ pub fn init_winit() {
 
     event_loop
         .run(None, &mut data, move |_| {
-            // Holo is running
+            // Magma is running
         })
         .unwrap();
 }

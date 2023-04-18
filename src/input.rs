@@ -10,9 +10,9 @@ use smithay::{
     utils::{Logical, Point, SERIAL_COUNTER},
 };
 
-use crate::{state::{Backend, HoloState}, utils::focus::FocusTarget};
+use crate::{state::{Backend, MagmaState}, utils::focus::FocusTarget};
 
-impl<BackendData: Backend> HoloState<BackendData> {
+impl<BackendData: Backend> MagmaState<BackendData> {
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         match event {
             InputEvent::Keyboard { event, .. } => {

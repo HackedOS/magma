@@ -13,7 +13,7 @@ pub use smithay::{
 };
 
 use crate::{
-    state::{HoloState, Backend},
+    state::{MagmaState, Backend},
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -39,11 +39,11 @@ impl From<FocusTarget> for WlSurface {
     }
 }
 
-impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget {
+impl<BackendData: Backend> PointerTarget<MagmaState<BackendData>> for FocusTarget {
     fn enter(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         event: &MotionEvent,
     ) {
         match self {
@@ -54,8 +54,8 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
     fn motion(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         event: &MotionEvent,
     ) {
         match self {
@@ -66,8 +66,8 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
     fn relative_motion(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         event: &RelativeMotionEvent,
     ) {
         match self {
@@ -78,8 +78,8 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
     fn button(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         event: &ButtonEvent,
     ) {
         match self {
@@ -90,8 +90,8 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
     fn axis(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         frame: AxisFrame,
     ) {
         match self {
@@ -102,8 +102,8 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
     fn leave(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         serial: Serial,
         time: u32,
     ) {
@@ -115,11 +115,11 @@ impl<BackendData: Backend> PointerTarget<HoloState<BackendData>> for FocusTarget
     }
 }
 
-impl<BackendData: Backend> KeyboardTarget<HoloState<BackendData>> for FocusTarget {
+impl<BackendData: Backend> KeyboardTarget<MagmaState<BackendData>> for FocusTarget {
     fn enter(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         keys: Vec<KeysymHandle<'_>>,
         serial: Serial,
     ) {
@@ -131,8 +131,8 @@ impl<BackendData: Backend> KeyboardTarget<HoloState<BackendData>> for FocusTarge
     }
     fn leave(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         serial: Serial,
     ) {
         match self {
@@ -143,8 +143,8 @@ impl<BackendData: Backend> KeyboardTarget<HoloState<BackendData>> for FocusTarge
     }
     fn key(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         key: KeysymHandle<'_>,
         state: KeyState,
         serial: Serial,
@@ -160,8 +160,8 @@ impl<BackendData: Backend> KeyboardTarget<HoloState<BackendData>> for FocusTarge
     }
     fn modifiers(
         &self,
-        seat: &Seat<HoloState<BackendData>>,
-        data: &mut HoloState<BackendData>,
+        seat: &Seat<MagmaState<BackendData>>,
+        data: &mut MagmaState<BackendData>,
         modifiers: ModifiersState,
         serial: Serial,
     ) {

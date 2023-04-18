@@ -43,7 +43,7 @@ use smithay_drm_extras::{
 use tracing::{error, info};
 
 use crate::{
-    state::{Backend, CalloopData, HoloState},
+    state::{Backend, CalloopData, MagmaState},
     utils::{render::CustomRenderElements, workspaces::Workspaces},
 };
 
@@ -80,7 +80,7 @@ pub struct Device {
 
 pub fn init_udev() {
     let mut event_loop: EventLoop<CalloopData<UdevData>> = EventLoop::try_new().unwrap();
-    let mut display: Display<HoloState<UdevData>> = Display::new().unwrap();
+    let mut display: Display<MagmaState<UdevData>> = Display::new().unwrap();
 
     /*
      * Initialize session
@@ -113,7 +113,7 @@ pub fn init_udev() {
         devices: HashMap::new(),
     };
 
-    let mut state = HoloState::new(&mut event_loop, &mut display, data);
+    let mut state = MagmaState::new(&mut event_loop, &mut display, data);
     /*
      * Add input source
      */
@@ -163,7 +163,7 @@ pub fn init_udev() {
 
     event_loop
         .run(None, &mut calloopdata, move |_| {
-            // HoloWM is running
+            // MagmaWM is running
         })
         .unwrap();
 }
@@ -197,13 +197,13 @@ pub fn primary_gpu(seat: &str) -> (DrmNode, PathBuf) {
 }
 
 // Drm
-impl HoloState<UdevData> {
+impl MagmaState<UdevData> {
     pub fn on_drm_event(
         &mut self,
         node: DrmNode,
         event: drm::DrmEvent,
         _meta: &mut Option<drm::DrmEventMetadata>,
-        display: &mut Display<HoloState<UdevData>>,
+        display: &mut Display<MagmaState<UdevData>>,
     ) {
         match event {
             drm::DrmEvent::VBlank(crtc) => {
@@ -245,7 +245,7 @@ impl HoloState<UdevData> {
         &mut self,
         node: DrmNode,
         event: drm_scanner::DrmScanEvent,
-        display: &mut Display<HoloState<UdevData>>,
+        display: &mut Display<MagmaState<UdevData>>,
     ) {
         let device = if let Some(device) = self.backend_data.devices.get_mut(&node) {
             device
@@ -302,8 +302,8 @@ impl HoloState<UdevData> {
 }
 
 // Udev
-impl HoloState<UdevData> {
-    pub fn on_udev_event(&mut self, event: UdevEvent, display: &mut Display<HoloState<UdevData>>) {
+impl MagmaState<UdevData> {
+    pub fn on_udev_event(&mut self, event: UdevEvent, display: &mut Display<MagmaState<UdevData>>) {
         match event {
             UdevEvent::Added { device_id, path } => {
                 if let Ok(node) = DrmNode::from_dev_id(device_id) {
@@ -327,7 +327,7 @@ impl HoloState<UdevData> {
         &mut self,
         node: DrmNode,
         path: PathBuf,
-        display: &mut Display<HoloState<UdevData>>,
+        display: &mut Display<MagmaState<UdevData>>,
     ) {
         let fd = self
             .backend_data
@@ -385,7 +385,7 @@ impl HoloState<UdevData> {
         self.on_device_changed(node, display);
     }
 
-    fn on_device_changed(&mut self, node: DrmNode, display: &mut Display<HoloState<UdevData>>) {
+    fn on_device_changed(&mut self, node: DrmNode, display: &mut Display<MagmaState<UdevData>>) {
         if let Some(device) = self.backend_data.devices.get_mut(&node) {
             for event in device.drm_scanner.scan_connectors(&device.drm) {
                 self.on_connector_event(node, event, display);
@@ -417,7 +417,7 @@ impl Surface {
         formats: HashSet<Format>,
         drm: &drm::DrmDevice,
         gbm: gbm::GbmDevice<DrmDeviceFd>,
-        display: &mut Display<HoloState<UdevData>>,
+        display: &mut Display<MagmaState<UdevData>>,
     ) -> Self {
         let mode_id = connector
             .modes()
@@ -459,7 +459,7 @@ impl Surface {
                 model,
             },
         );
-        let _global = output.create_global::<HoloState<UdevData>>(&display.handle());
+        let _global = output.create_global::<MagmaState<UdevData>>(&display.handle());
         let output_mode = WlMode::from(drm_mode);
         output.set_preferred(output_mode);
         output.change_current_state(
@@ -485,7 +485,7 @@ impl Surface {
         &mut self,
         renderer: &mut R,
         workspaces: &mut Workspaces,
-        display: &mut Display<HoloState<UdevData>>,
+        display: &mut Display<MagmaState<UdevData>>,
         pointer_location: Point<f64, Logical>,
         popup_manager: &mut PopupManager,
     ) where
