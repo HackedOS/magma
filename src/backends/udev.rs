@@ -499,7 +499,7 @@ impl Surface {
         let pointer_texture = TextureBuffer::from_memory(
             renderer,
             CURSOR_DATA,
-            SUPPORTED_FORMATS[0],
+            Fourcc::Abgr8888,
             (64, 64),
             false,
             1,
