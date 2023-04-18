@@ -168,26 +168,10 @@ impl<BackendData: Backend> MagmaState<BackendData> {
         }
 
         let (pos_x, pos_y) = pos.into();
-        let max_x = self.workspaces.current().outputs().fold(0, |acc, o| {
-            acc + self.workspaces.current().output_geometry(o).unwrap().size.w
-        });
+        let (max_x, max_y) = self.workspaces.current().output_geometry(self.workspaces.current().outputs().next().unwrap()).unwrap().size.into();
         let clamped_x = pos_x.max(0.0).min(max_x as f64);
-        let max_y = self
-            .workspaces
-            .current()
-            .outputs()
-            .find(|o| {
-                let geo = self.workspaces.current().output_geometry(o).unwrap();
-                geo.contains((clamped_x as i32, 0))
-            })
-            .map(|o| self.workspaces.current().output_geometry(o).unwrap().size.h);
-
-        if let Some(max_y) = max_y {
-            let clamped_y = pos_y.max(0.0).min(max_y as f64);
-            (clamped_x, clamped_y).into()
-        } else {
-            (clamped_x, pos_y).into()
-        }
+        let clamped_y = pos_y.max(0.0).min(max_y as f64);
+        (clamped_x, clamped_y).into()
     }
 
     pub fn set_input_focus(&mut self, target: FocusTarget){
