@@ -19,7 +19,9 @@ impl<BackendData: Backend> MagmaState<BackendData> {
                     d.0.toplevel().send_close()
                 }
             }
-            Action::Workspace(id) => self.workspaces.activate(id),
+            Action::Workspace(id) => {self.workspaces.activate(id);
+            self.set_input_focus_auto();
+            },
             Action::MoveWindowToWorkspace(id) => {
                 let window = self
                     .workspaces

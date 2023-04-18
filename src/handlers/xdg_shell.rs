@@ -22,7 +22,7 @@ use crate::{
     state::{Backend, MagmaState},
     utils::{
         tiling::{bsp_layout, WindowLayoutEvent},
-        workspaces::Workspaces,
+        workspaces::Workspaces, focus::FocusTarget,
     },
 };
 
@@ -35,10 +35,11 @@ impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
         let window = Window::new(surface);
         bsp_layout(
             self.workspaces.current_mut(),
-            window,
+            window.clone(),
             WindowLayoutEvent::Added,
             self.config.gaps,
         );
+        self.set_input_focus(FocusTarget::Window(window));
     }
     fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
         let window = self
@@ -55,6 +56,8 @@ impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
             WindowLayoutEvent::Removed,
             self.config.gaps,
         );
+
+        self.set_input_focus_auto();
     }
     fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
         surface.with_pending_state(|state| {

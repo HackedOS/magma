@@ -95,7 +95,9 @@ impl<BackendData: Backend> WlrLayerShellHandler for MagmaState<BackendData>{
             self.workspaces.current().outputs().next().unwrap().clone()
         });
         let mut map = layer_map_for_output(&output);
-        map.map_layer(&LayerSurface::new(surface, namespace)).unwrap();
+        let layer_surface = LayerSurface::new(surface, namespace);
+        map.map_layer(&layer_surface).unwrap();
+        self.set_input_focus(FocusTarget::LayerSurface(layer_surface))
     }
 
     fn layer_destroyed(&mut self, surface: WlrLayerSurface) {
@@ -109,6 +111,7 @@ impl<BackendData: Backend> WlrLayerShellHandler for MagmaState<BackendData>{
         }) {
             map.unmap_layer(&layer);
         }
+        self.set_input_focus_auto()
     }
 }
 

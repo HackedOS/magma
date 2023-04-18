@@ -51,9 +51,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
 
                 let under = self.surface_under();
 
-                if let Some(d) = under.clone() {
-                    self.set_input_focus(d.0);
-                }
+                self.set_input_focus_auto();
 
                 if let Some(ptr) = self.seat.get_pointer() {
                     ptr.motion(
@@ -92,10 +90,8 @@ impl<BackendData: Backend> MagmaState<BackendData> {
 
                 let under = self.surface_under();
 
-                if let Some(d) = under.clone() {
-                    self.set_input_focus(d.0);
-                }
-
+                self.set_input_focus_auto();
+                
                 pointer.motion(
                     self,
                     under,
@@ -115,10 +111,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
 
                 let button_state = event.state();
 
-                let under = self.surface_under();
-                if let Some(d) = under.clone() {
-                    self.set_input_focus(d.0);
-                }
+                self.set_input_focus_auto();
 
                 pointer.button(
                     self,
@@ -201,6 +194,13 @@ impl<BackendData: Backend> MagmaState<BackendData> {
             let keyboard = self.seat.get_keyboard().unwrap();
             let serial = SERIAL_COUNTER.next_serial();
             keyboard.set_focus(self, Some(target), serial);
+    }
+
+    pub fn set_input_focus_auto(&mut self){
+        let under = self.surface_under();
+        if let Some(d) = under.clone() {
+            self.set_input_focus(d.0);
+        }
     }
 }
 
