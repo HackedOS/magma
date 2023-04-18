@@ -1,52 +1,54 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{HashMap},
     os::fd::FromRawFd,
     path::PathBuf,
-    time::{Duration, Instant},
+    time::{Duration},
 };
 
 use smithay::{
     backend::{
         allocator::{
-            dmabuf::{Dmabuf, DmabufAllocator},
             gbm::{self, GbmAllocator, GbmBufferFlags, GbmDevice},
-            Format, Fourcc,
+            Fourcc,
         },
-        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, GbmBufferedSurface, NodeType},
+        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::DrmCompositor},
         egl::{EGLDevice, EGLDisplay},
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
-            damage::OutputDamageTracker,
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles::GlesRenderer,
-            multigpu::{gbm::GbmGlesBackend, GpuManager},
-            Bind, ImportAll, ImportMem, Renderer,
+            gles::{GlesRenderer, GlesRenderbuffer},
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer},
         },
         session::{libseat::LibSeatSession, Session},
         udev::{self, UdevBackend, UdevEvent},
     },
-    desktop::{space::SpaceElement, PopupManager, layer_map_for_output, LayerSurface},
+    desktop::{space::SpaceElement, layer_map_for_output, LayerSurface},
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
-        calloop::{EventLoop, LoopHandle},
-        drm::control::{connector, crtc, ModeTypeFlags},
+        calloop::{EventLoop, LoopHandle, RegistrationToken},
+        drm::control::{crtc::{self, Handle}, ModeTypeFlags},
         input::Libinput,
         nix::fcntl::OFlag,
-        wayland_server::Display,
+        wayland_server::{Display, DisplayHandle, backend::GlobalId},
     },
-    utils::{DeviceFd, Logical, Point, Scale, Transform}, wayland::shell::wlr_layer::Layer,
+    utils::{DeviceFd, Scale, Transform}, wayland::shell::wlr_layer::Layer,
 };
 use smithay_drm_extras::{
-    drm_scanner::{self, DrmScanEvent},
+    drm_scanner::{self, DrmScanEvent, DrmScanner},
     edid::EdidInfo,
 };
 use tracing::{error, info};
 
 use crate::{
     state::{Backend, CalloopData, MagmaState},
-    utils::{render::CustomRenderElements, workspaces::Workspaces},
+    utils::{render::CustomRenderElements},
 };
-
+pub type GbmDrmCompositor = DrmCompositor<
+    GbmAllocator<DrmDeviceFd>,
+    GbmDevice<DrmDeviceFd>,
+    (),
+    DrmDeviceFd,
+>;
 const SUPPORTED_FORMATS: &[Fourcc] = &[
     Fourcc::Abgr2101010,
     Fourcc::Argb2101010,
@@ -73,9 +75,9 @@ pub struct Device {
     pub surfaces: HashMap<crtc::Handle, Surface>,
     pub gbm: GbmDevice<DrmDeviceFd>,
     pub drm: DrmDevice,
+    pub drm_scanner: DrmScanner,
     pub render_node: DrmNode,
-    pub drm_scanner: drm_scanner::DrmScanner,
-    pub gbm_allocator: DmabufAllocator<GbmAllocator<DrmDeviceFd>>,
+    pub registration_token: RegistrationToken,
 }
 
 pub fn init_udev() {
@@ -207,35 +209,15 @@ impl MagmaState<UdevData> {
     ) {
         match event {
             drm::DrmEvent::VBlank(crtc) => {
-                if let Some(device) = self.backend_data.devices.get_mut(&node) {
-                    if let Some(surface) = device.surfaces.get_mut(&crtc) {
-                        let mut renderer = if self.backend_data.primary_gpu == device.render_node {
-                            self.backend_data
-                                .gpus
-                                .single_renderer(&device.render_node)
-                                .unwrap()
-                        } else {
-                            self.backend_data
-                                .gpus
-                                .renderer(
-                                    &self.backend_data.primary_gpu,
-                                    &device.render_node,
-                                    &mut device.gbm_allocator,
-                                    surface.gbm_surface.format(),
-                                )
-                                .unwrap()
-                        };
-
-                        surface.gbm_surface.frame_submitted().unwrap();
-                        surface.next_buffer(
-                            &mut renderer,
-                            &mut self.workspaces,
-                            display,
-                            self.pointer_location,
-                            &mut self.popup_manager
-                        );
-                    }
-                }
+                let device = self.backend_data.devices.get_mut(&node).unwrap();
+                let surface = device.surfaces.get_mut(&crtc).unwrap();
+                surface.compositor.frame_submitted().unwrap();
+                self.render(
+                    display,
+                    &node,
+                    &crtc,
+                );
+                
             }
             drm::DrmEvent::Error(_) => {}
         }
@@ -264,32 +246,81 @@ impl MagmaState<UdevData> {
                     .single_renderer(&device.render_node)
                     .unwrap();
 
-                let mut surface = Surface::new(
-                    crtc,
-                    &connector,
-                    renderer
-                        .as_mut()
-                        .egl_context()
-                        .dmabuf_render_formats()
-                        .clone(),
-                    &device.drm,
-                    device.gbm.clone(),
-                    display,
+                    let mode_id = connector
+                    .modes()
+                    .iter()
+                    .position(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
+                    .unwrap_or(0);
+        
+                let drm_mode = connector.modes()[mode_id];
+        
+                let drm_surface = device.drm
+                    .create_surface(crtc, drm_mode, &[connector.handle()])
+                    .unwrap();
+        
+                let name = format!(
+                    "{}-{}",
+                    connector.interface().as_str(),
+                    connector.interface_id()
                 );
+        
+                let (make, model) = EdidInfo::for_connector(&device.drm, connector.handle())
+                    .map(|info| (info.manufacturer, info.model))
+                    .unwrap_or_else(|| ("Unknown".into(), "Unknown".into()));
+        
+                let (w, h) = connector.size().unwrap_or((0, 0));
+                let output = Output::new(
+                    name,
+                    PhysicalProperties {
+                        size: (w as i32, h as i32).into(),
+                        subpixel: smithay::output::Subpixel::Unknown,
+                        make,
+                        model,
+                    },
+                );
+                let global = output.create_global::<MagmaState<UdevData>>(&display.handle());
+                let output_mode = WlMode::from(drm_mode);
+                output.set_preferred(output_mode);
+                output.change_current_state(
+                    Some(output_mode),
+                    Some(Transform::Normal),
+                    Some(smithay::output::Scale::Integer(1)),
+                    None,
+                );
+                let render_formats = renderer.as_mut().egl_context().dmabuf_render_formats().clone();
+                let gbm_allocator = GbmAllocator::new(device.gbm.clone(), GbmBufferFlags::RENDERING);
+        
+                let compositor = GbmDrmCompositor::new(
+                    &output,
+                    drm_surface,
+                    None,
+                    gbm_allocator,
+                    device.gbm.clone(),
+                    SUPPORTED_FORMATS,
+                    render_formats,
+                    device.drm.cursor_size(),
+                    Some(device.gbm.clone())
+        
+                ).unwrap();
+                let surface = Surface {
+                    _dh: display.handle(),
+                    _device_id: node,
+                    _render_node: device.render_node,
+                    _global: Some(global),
+                    compositor,
+                };
 
                 for workspace in self.workspaces.iter() {
-                    workspace.add_output(surface.output.clone())
+                    workspace.add_output(output.clone())
                 }
 
-                surface.next_buffer(
-                    renderer.as_mut(),
-                    &mut self.workspaces,
-                    display,
-                    self.pointer_location,
-                    &mut self.popup_manager
-                );
-
                 device.surfaces.insert(crtc, surface);
+
+                self.render(
+                    display,
+                    &node,
+                    &crtc,
+                );
             }
             DrmScanEvent::Disconnected {
                 crtc: Some(crtc), ..
@@ -343,7 +374,6 @@ impl MagmaState<UdevData> {
         let (drm, drm_notifier) = drm::DrmDevice::new(fd, false).unwrap();
 
         let gbm = gbm::GbmDevice::new(drm.device_fd().clone()).unwrap();
-        let gbm_allocator = GbmAllocator::new(gbm.clone(), GbmBufferFlags::RENDERING);
 
         // Make sure display is dropped before we call add_node
         let render_node =
@@ -361,7 +391,7 @@ impl MagmaState<UdevData> {
             .add_node(render_node, gbm.clone())
             .unwrap();
 
-        self.backend_data
+        let registration_token = self.backend_data
             .handle
             .insert_source(drm_notifier, move |event, meta, calloopdata| {
                 calloopdata
@@ -375,10 +405,10 @@ impl MagmaState<UdevData> {
             Device {
                 drm,
                 gbm,
-                gbm_allocator: DmabufAllocator(gbm_allocator),
                 drm_scanner: Default::default(),
                 surfaces: Default::default(),
                 render_node,
+                registration_token,
             },
         );
 
@@ -404,100 +434,30 @@ impl MagmaState<UdevData> {
 }
 
 pub struct Surface {
-    pub gbm_surface: GbmBufferedSurface<GbmAllocator<DrmDeviceFd>, ()>,
-    pub output: Output,
-    pub output_damage_tracker: OutputDamageTracker,
-    pub start_time: Instant,
+    _dh: DisplayHandle,
+    _device_id: DrmNode,
+    _render_node: DrmNode,
+    _global: Option<GlobalId>,
+    compositor: GbmDrmCompositor,
 }
 
-impl Surface {
-    pub fn new(
-        crtc: crtc::Handle,
-        connector: &connector::Info,
-        formats: HashSet<Format>,
-        drm: &drm::DrmDevice,
-        gbm: gbm::GbmDevice<DrmDeviceFd>,
-        display: &mut Display<MagmaState<UdevData>>,
-    ) -> Self {
-        let mode_id = connector
-            .modes()
-            .iter()
-            .position(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
-            .unwrap_or(0);
-
-        let drm_mode = connector.modes()[mode_id];
-
-        let drm_surface = drm
-            .create_surface(crtc, drm_mode, &[connector.handle()])
-            .unwrap();
-
-        let gbm_surface = GbmBufferedSurface::new(
-            drm_surface,
-            GbmAllocator::new(gbm, GbmBufferFlags::RENDERING | GbmBufferFlags::SCANOUT),
-            SUPPORTED_FORMATS,
-            formats,
-        )
-        .unwrap();
-
-        let name = format!(
-            "{}-{}",
-            connector.interface().as_str(),
-            connector.interface_id()
-        );
-
-        let (make, model) = EdidInfo::for_connector(drm, connector.handle())
-            .map(|info| (info.manufacturer, info.model))
-            .unwrap_or_else(|| ("Unknown".into(), "Unknown".into()));
-
-        let (w, h) = connector.size().unwrap_or((0, 0));
-        let output = Output::new(
-            name,
-            PhysicalProperties {
-                size: (w as i32, h as i32).into(),
-                subpixel: smithay::output::Subpixel::Unknown,
-                make,
-                model,
-            },
-        );
-        let _global = output.create_global::<MagmaState<UdevData>>(&display.handle());
-        let output_mode = WlMode::from(drm_mode);
-        output.set_preferred(output_mode);
-        output.change_current_state(
-            Some(output_mode),
-            Some(Transform::Normal),
-            Some(smithay::output::Scale::Integer(1)),
-            None,
-        );
-
-        let output_damage_tracker = OutputDamageTracker::from_output(&output);
-
-        let start_time = Instant::now();
-
-        Self {
-            start_time,
-            gbm_surface,
-            output,
-            output_damage_tracker,
-        }
-    }
-
-    pub fn next_buffer<R>(
+impl MagmaState<UdevData> {
+    pub fn render(
         &mut self,
-        renderer: &mut R,
-        workspaces: &mut Workspaces,
         display: &mut Display<MagmaState<UdevData>>,
-        pointer_location: Point<f64, Logical>,
-        popup_manager: &mut PopupManager,
-    ) where
-        R: Renderer + ImportMem + Bind<Dmabuf> + ImportAll,
-        R::TextureId: 'static + Clone,
-    {
-        let (dmabuf, age) = self.gbm_surface.next_buffer().unwrap();
-        renderer.bind(dmabuf).unwrap();
-        let mut renderelements: Vec<CustomRenderElements<_>> = vec![];
+        node: &DrmNode,
+        crtc: &Handle,
+    ) 
+    {      
+        let device = self.backend_data.devices.get_mut(node).unwrap();
+        let surface = device.surfaces.get_mut(crtc).unwrap();
+        let mut renderer = self.backend_data.gpus.single_renderer(&device.render_node).unwrap();
+        let output = self.workspaces.current().outputs().next().unwrap();
+
+        let mut renderelements: Vec<CustomRenderElements<MultiRenderer<_,_>>> = vec![];
 
         let pointer_texture = TextureBuffer::from_memory(
-            renderer,
+            &mut renderer,
             CURSOR_DATA,
             Fourcc::Abgr8888,
             (64, 64),
@@ -508,9 +468,9 @@ impl Surface {
         )
         .unwrap();
 
-        renderelements.append(&mut vec![CustomRenderElements::<R>::from(
+        renderelements.append(&mut vec![CustomRenderElements::<MultiRenderer<_,_>>::from(
             TextureRenderElement::from_texture_buffer(
-                pointer_location.to_physical(Scale::from(1.0)),
+                self.pointer_location.to_physical(Scale::from(1.0)),
                 &pointer_texture,
                 None,
                 None,
@@ -518,7 +478,7 @@ impl Surface {
             ),
         )]);
 
-        let layer_map = layer_map_for_output(&self.output);
+        let layer_map = layer_map_for_output(&output);
         let (lower, upper): (Vec<&LayerSurface>, Vec<&LayerSurface>) = layer_map
             .layers()
             .rev()
@@ -533,9 +493,9 @@ impl Surface {
                         .map(|geo| (geo.loc, surface))
                 })
                 .flat_map(|(loc, surface)| {
-                    AsRenderElements::<R>::render_elements::<WaylandSurfaceRenderElement<R>>(
+                    AsRenderElements::<MultiRenderer<_,_>>::render_elements::<WaylandSurfaceRenderElement<MultiRenderer<_,_>>>(
                         surface,
-                        renderer,
+                        &mut renderer,
                         loc.to_physical_precise_round(1),
                         Scale::from(1.0),
                     )
@@ -544,7 +504,7 @@ impl Surface {
                 }),
         );
 
-        renderelements.extend(workspaces.current().render_elements(renderer));
+        renderelements.extend(self.workspaces.current().render_elements(&mut renderer));
 
         renderelements.extend(
             lower
@@ -555,9 +515,9 @@ impl Surface {
                         .map(|geo| (geo.loc, surface))
                 })
                 .flat_map(|(loc, surface)| {
-                    AsRenderElements::<R>::render_elements::<WaylandSurfaceRenderElement<R>>(
+                    AsRenderElements::<MultiRenderer<_,_>>::render_elements::<WaylandSurfaceRenderElement<MultiRenderer<_,_>>>(
                         surface,
-                        renderer,
+                        &mut renderer,
                         loc.to_physical_precise_round(1),
                         Scale::from(1.0),
                     )
@@ -566,35 +526,34 @@ impl Surface {
                 }),
         );
 
-        self.output_damage_tracker
-            .render_output::<CustomRenderElements<R>, _>(
-                renderer,
-                age as usize,
+        surface.compositor
+            .render_frame::<_, _, GlesRenderbuffer>(
+                &mut renderer,
                 &renderelements,
                 [0.1, 0.1, 0.1, 1.0],
             )
             .unwrap();
 
-        self.gbm_surface.queue_buffer(None, ()).unwrap();
+        surface.compositor.queue_frame(()).unwrap();
 
-        workspaces.current().windows().for_each(|window| {
+        self.workspaces.current().windows().for_each(|window| {
             window.send_frame(
-                &self.output,
+                &output,
                 self.start_time.elapsed(),
                 Some(Duration::ZERO),
-                |_, _| Some(self.output.clone()),
+                |_, _| Some(output.clone()),
             );
         });
         for layer_surface in layer_map.layers() {
             layer_surface.send_frame(
-                &self.output,
+                &output,
                 self.start_time.elapsed(),
                 Some(Duration::ZERO),
-                |_, _| Some(self.output.clone()),
+                |_, _| Some(output.clone()),
             );
         }
-        workspaces.all_windows().for_each(|e| e.refresh());
-        popup_manager.cleanup();
+        self.workspaces.all_windows().for_each(|e| e.refresh());
+        self.popup_manager.cleanup();
         display.flush_clients().unwrap();
     }
 }
