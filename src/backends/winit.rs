@@ -4,7 +4,7 @@ use smithay::{
     backend::{
         renderer::{
             damage::OutputDamageTracker, element::{surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles2::Gles2Renderer,
+            gles::GlesRenderer,
         },
         winit::{self, WinitError, WinitEvent, WinitEventLoop, WinitGraphicsBackend},
     },
@@ -21,7 +21,7 @@ use smithay::{
 };
 
 pub struct WinitData {
-    backend: WinitGraphicsBackend<Gles2Renderer>,
+    backend: WinitGraphicsBackend<GlesRenderer>,
     damage_tracker: OutputDamageTracker,
 }
 
@@ -163,7 +163,7 @@ pub fn winit_dispatch(
                     .map(|geo| (geo.loc, surface))
             })
             .flat_map(|(loc, surface)| {
-                AsRenderElements::<Gles2Renderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
+                AsRenderElements::<GlesRenderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
                     surface,
                     winitdata.backend.renderer(),
                     loc.to_physical_precise_round(1),
@@ -184,7 +184,7 @@ pub fn winit_dispatch(
                     .map(|geo| (geo.loc, surface))
             })
             .flat_map(|(loc, surface)| {
-                AsRenderElements::<Gles2Renderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
+                AsRenderElements::<GlesRenderer>::render_elements::<WaylandSurfaceRenderElement<_>>(
                     surface,
                     winitdata.backend.renderer(),
                     loc.to_physical_precise_round(1),

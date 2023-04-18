@@ -18,7 +18,7 @@ use smithay::{
         renderer::{
             damage::OutputDamageTracker,
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles2::Gles2Renderer,
+            gles::GlesRenderer,
             multigpu::{gbm::GbmGlesBackend, GpuManager},
             Bind, ImportAll, ImportMem, Renderer,
         },
@@ -60,7 +60,7 @@ pub struct UdevData {
     pub session: LibSeatSession,
     pub handle: LoopHandle<'static, CalloopData<UdevData>>,
     pub primary_gpu: DrmNode,
-    pub gpus: GpuManager<GbmGlesBackend<Gles2Renderer>>,
+    pub gpus: GpuManager<GbmGlesBackend<GlesRenderer>>,
     pub devices: HashMap<DrmNode, Device>,
 }
 
@@ -499,6 +499,7 @@ impl Surface {
         let pointer_texture = TextureBuffer::from_memory(
             renderer,
             CURSOR_DATA,
+            SUPPORTED_FORMATS[0],
             (64, 64),
             false,
             1,

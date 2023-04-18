@@ -26,4 +26,5 @@ features = [
     "backend_gbm",
     "backend_udev",
     "backend_libinput",
+    "use_system_lib",
 ]
