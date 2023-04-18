@@ -232,6 +232,7 @@ impl MagmaState<UdevData> {
         let device = if let Some(device) = self.backend_data.devices.get_mut(&node) {
             device
         } else {
+            error!("Received connector event for unknown device: {:?}", node);
             return;
         };
 
