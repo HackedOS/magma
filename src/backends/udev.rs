@@ -26,7 +26,7 @@ use smithay::{
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
         calloop::{EventLoop, LoopHandle, RegistrationToken},
-        drm::control::{crtc::{self, Handle}, ModeTypeFlags},
+        drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait},
         input::Libinput,
         nix::fcntl::OFlag,
         wayland_server::{Display, DisplayHandle, backend::GlobalId},
@@ -37,7 +37,7 @@ use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent, DrmScanner},
     edid::EdidInfo,
 };
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     state::{Backend, CalloopData, MagmaState},
@@ -289,11 +289,38 @@ impl MagmaState<UdevData> {
                 );
                 let render_formats = renderer.as_mut().egl_context().dmabuf_render_formats().clone();
                 let gbm_allocator = GbmAllocator::new(device.gbm.clone(), GbmBufferFlags::RENDERING);
-        
+                
+                let driver = match device.drm.get_driver() {
+                    Ok(driver) => driver,
+                    Err(err) => {
+                        warn!("Failed to query drm driver: {}", err);
+                        return;
+                    }
+                };
+    
+                let mut planes = match drm_surface.planes() {
+                    Ok(planes) => planes,
+                    Err(err) => {
+                        warn!("Failed to query surface planes: {}", err);
+                        return;
+                    }
+                };
+    
+                // Using an overlay plane on a nvidia card breaks
+                if driver.name().to_string_lossy().to_lowercase().contains("nvidia")
+                    || driver
+                        .description()
+                        .to_string_lossy()
+                        .to_lowercase()
+                        .contains("nvidia")
+                {
+                    planes.overlay = vec![];
+                }
+
                 let compositor = GbmDrmCompositor::new(
                     &output,
                     drm_surface,
-                    None,
+                    Some(planes),
                     gbm_allocator,
                     device.gbm.clone(),
                     SUPPORTED_FORMATS,
