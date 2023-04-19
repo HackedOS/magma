@@ -45,6 +45,28 @@ impl<BackendData: Backend> SeatHandler for MagmaState<BackendData> {
             .and_then(|s| dh.get_client(s.id()).ok());
         set_data_device_focus(dh, seat, focus.clone());
         set_primary_focus(dh, seat, focus);
+
+        if let Some(focus_target) = focused {
+            match focus_target {
+                FocusTarget::Window(w) => {
+                    for window in self.workspaces.all_windows(){
+                        if window.eq(w){
+                            window.set_activated(true);
+                        }else{
+                            window.set_activated(false);
+                        }
+                        window.toplevel().send_configure();
+                    }
+                },
+                FocusTarget::LayerSurface(_) => {
+                    for window in self.workspaces.all_windows() {
+                    window.set_activated(false);
+                    window.toplevel().send_configure();
+                    }
+                },
+                FocusTarget::Popup(_) => {},
+            };
+        }
     }
 }
 
