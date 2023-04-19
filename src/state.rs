@@ -4,7 +4,7 @@ use smithay::{
     desktop::{Window, PopupManager, layer_map_for_output},
     input::{Seat, SeatState},
     reexports::{
-        calloop::{generic::Generic, EventLoop, Interest, LoopSignal, Mode, PostAction},
+        calloop::{generic::Generic, Interest, LoopSignal, Mode, PostAction, LoopHandle},
         wayland_server::{
             backend::{ClientData, ClientId, DisconnectReason},
             Display, DisplayHandle,
@@ -35,6 +35,7 @@ pub trait Backend {
 pub struct MagmaState<BackendData: Backend + 'static> {
     pub dh: DisplayHandle,
     pub backend_data: BackendData,
+    pub loop_handle: LoopHandle<'static, CalloopData<BackendData>>,
     pub config: Config,
     pub start_time: Instant,
     pub socket_name: OsString,
@@ -59,7 +60,8 @@ pub struct MagmaState<BackendData: Backend + 'static> {
 
 impl<BackendData: Backend> MagmaState<BackendData> {
     pub fn new(
-        event_loop: &mut EventLoop<CalloopData<BackendData>>,
+        mut loop_handle: LoopHandle<'static, CalloopData<BackendData>>,
+        loop_signal: LoopSignal,
         display: &mut Display<MagmaState<BackendData>>,
         backend_data: BackendData,
     ) -> Self {
@@ -85,11 +87,10 @@ impl<BackendData: Backend> MagmaState<BackendData> {
 
         let workspaces = Workspaces::new(config.workspaces);
 
-        let socket_name = Self::init_wayland_listener(event_loop, display);
-
-        let loop_signal = event_loop.get_signal();
+        let socket_name = Self::init_wayland_listener(&mut loop_handle, display);
 
         Self {
+            loop_handle,
             dh,
             backend_data,
             config,
@@ -113,7 +114,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
         }
     }
     fn init_wayland_listener(
-        event_loop: &mut EventLoop<CalloopData<BackendData>>,
+        handle: &mut LoopHandle<'static, CalloopData<BackendData>>,
         display: &mut Display<MagmaState<BackendData>>,
     ) -> OsString {
         // Creates a new listening socket, automatically choosing the next available `wayland` socket name.
@@ -123,10 +124,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
         // Clients will connect to this socket.
         let socket_name = listening_socket.socket_name().to_os_string();
 
-        let handle = event_loop.handle();
-
-        event_loop
-            .handle()
+        handle
             .insert_source(listening_socket, move |client_stream, _, state| {
                 // Inside the callback, you should insert the client into the display.
                 //

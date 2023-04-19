@@ -25,7 +25,7 @@ use smithay::{
     desktop::{space::SpaceElement, layer_map_for_output, LayerSurface},
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
-        calloop::{EventLoop, LoopHandle, RegistrationToken},
+        calloop::{EventLoop, LoopHandle, RegistrationToken, timer::{Timer, TimeoutAction}},
         drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait},
         input::Libinput,
         nix::fcntl::OFlag,
@@ -37,7 +37,7 @@ use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent, DrmScanner},
     edid::EdidInfo,
 };
-use tracing::{error, info, warn};
+use tracing::{error, info, warn, trace};
 
 use crate::{
     state::{Backend, CalloopData, MagmaState},
@@ -133,7 +133,7 @@ pub fn init_udev() {
         dmabuf_state: None,
     };
 
-    let mut state = MagmaState::new(&mut event_loop, &mut display, data);
+    let mut state = MagmaState::new(event_loop.handle(), event_loop.get_signal(), &mut display, data);
     /*
      * Add input source
      */
@@ -258,8 +258,8 @@ impl MagmaState<UdevData> {
                 surface.compositor.frame_submitted().unwrap();
                 self.render(
                     display,
-                    &node,
-                    &crtc,
+                    node,
+                    crtc,
                 );
                 
             }
@@ -399,8 +399,8 @@ impl MagmaState<UdevData> {
 
                 self.render(
                     display,
-                    &node,
-                    &crtc,
+                    node,
+                    crtc,
                 );
             }
             DrmScanEvent::Disconnected {
@@ -527,12 +527,12 @@ impl MagmaState<UdevData> {
     pub fn render(
         &mut self,
         display: &mut Display<MagmaState<UdevData>>,
-        node: &DrmNode,
-        crtc: &Handle,
+        node: DrmNode,
+        crtc: Handle,
     ) 
     {      
-        let device = self.backend_data.devices.get_mut(node).unwrap();
-        let surface = device.surfaces.get_mut(crtc).unwrap();
+        let device = self.backend_data.devices.get_mut(&node).unwrap();
+        let surface = device.surfaces.get_mut(&crtc).unwrap();
         let mut renderer = self.backend_data.gpus.single_renderer(&device.render_node).unwrap();
         let output = self.workspaces.current().outputs().next().unwrap();
 
@@ -608,15 +608,38 @@ impl MagmaState<UdevData> {
                 }),
         );
 
-        surface.compositor
+        let rendered = surface.compositor
             .render_frame::<_, _, GlesRenderbuffer>(
                 &mut renderer,
                 &renderelements,
                 [0.1, 0.1, 0.1, 1.0],
             )
-            .unwrap();
-
-        surface.compositor.queue_frame(()).unwrap();
+            .unwrap().damage.is_some();
+        
+        if rendered {
+            surface.compositor.queue_frame(()).unwrap();
+        } else {
+            let output_refresh = match output.current_mode() {
+                Some(mode) => mode.refresh,
+                None => return,
+            };
+            // If reschedule is true we either hit a temporary failure or more likely rendering
+            // did not cause any damage on the output. In this case we just re-schedule a repaint
+            // after approx. one frame to re-test for damage.
+            let reschedule_duration = Duration::from_millis((1_000_000f32 / output_refresh as f32) as u64);
+            trace!(
+                "reschedule repaint timer with delay {:?} on {:?}",
+                reschedule_duration,
+                crtc,
+            );
+            let timer = Timer::from_duration(reschedule_duration);
+            self.loop_handle
+                .insert_source(timer, move |_, _, data| {
+                    data.state.render(&mut data.display,node, crtc);
+                    TimeoutAction::Drop
+                })
+                .expect("failed to schedule frame timer");
+        }
 
         self.workspaces.current().windows().for_each(|window| {
             window.send_frame(

@@ -68,7 +68,7 @@ pub fn init_winit() {
         backend,
         damage_tracker: damage_tracked_renderer,
     };
-    let state = MagmaState::new(&mut event_loop, &mut display, winitdata);
+    let state = MagmaState::new(event_loop.handle(), event_loop.get_signal(), &mut display, winitdata);
 
     let mut data = CalloopData {
         display,
