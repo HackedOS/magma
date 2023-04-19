@@ -1,5 +1,5 @@
 use std::{
-    collections::{HashMap},
+    collections::{HashMap, HashSet},
     os::fd::FromRawFd,
     path::PathBuf,
     time::{Duration},
@@ -9,7 +9,7 @@ use smithay::{
     backend::{
         allocator::{
             gbm::{self, GbmAllocator, GbmBufferFlags, GbmDevice},
-            Fourcc,
+            Fourcc, dmabuf::Dmabuf,
         },
         drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::DrmCompositor},
         egl::{EGLDevice, EGLDisplay},
@@ -17,7 +17,7 @@ use smithay::{
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles::{GlesRenderer, GlesRenderbuffer},
-            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer},
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma,
         },
         session::{libseat::LibSeatSession, Session},
         udev::{self, UdevBackend, UdevEvent},
@@ -29,9 +29,9 @@ use smithay::{
         drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait},
         input::Libinput,
         nix::fcntl::OFlag,
-        wayland_server::{Display, DisplayHandle, backend::GlobalId},
+        wayland_server::{Display, DisplayHandle, backend::GlobalId}, wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1,
     },
-    utils::{DeviceFd, Scale, Transform}, wayland::shell::wlr_layer::Layer,
+    utils::{DeviceFd, Scale, Transform}, wayland::{shell::wlr_layer::Layer, dmabuf::{DmabufGlobal, DmabufState, DmabufHandler, ImportError, DmabufFeedbackBuilder, DmabufFeedback}}, delegate_dmabuf,
 };
 use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent, DrmScanner},
@@ -59,12 +59,29 @@ const SUPPORTED_FORMATS: &[Fourcc] = &[
 static CURSOR_DATA: &[u8] = include_bytes!("../../resources/cursor.rgba");
 
 pub struct UdevData {
-    pub session: LibSeatSession,
-    pub handle: LoopHandle<'static, CalloopData<UdevData>>,
-    pub primary_gpu: DrmNode,
-    pub gpus: GpuManager<GbmGlesBackend<GlesRenderer>>,
-    pub devices: HashMap<DrmNode, Device>,
+    session: LibSeatSession,
+    handle: LoopHandle<'static, CalloopData<UdevData>>,
+    primary_gpu: DrmNode,
+    gpus: GpuManager<GbmGlesBackend<GlesRenderer>>,
+    devices: HashMap<DrmNode, Device>,
+    dmabuf_state: Option<(DmabufState, DmabufGlobal)>,
 }
+
+impl DmabufHandler for MagmaState<UdevData> {
+    fn dmabuf_state(&mut self) -> &mut DmabufState {
+        &mut self.backend_data.dmabuf_state.as_mut().unwrap().0
+    }
+
+    fn dmabuf_imported(&mut self, _global: &DmabufGlobal, dmabuf: Dmabuf) -> Result<(), ImportError> {
+        self.backend_data
+            .gpus
+            .single_renderer(&self.backend_data.primary_gpu)
+            .and_then(|mut renderer| renderer.import_dmabuf(&dmabuf, None))
+            .map(|_| ())
+            .map_err(|_| ImportError::Failed)
+    }
+}
+delegate_dmabuf!(MagmaState<UdevData>);
 
 impl Backend for UdevData {
     fn seat_name(&self) -> String {
@@ -113,6 +130,7 @@ pub fn init_udev() {
         primary_gpu,
         gpus,
         devices: HashMap::new(),
+        dmabuf_state: None,
     };
 
     let mut state = MagmaState::new(&mut event_loop, &mut display, data);
@@ -149,6 +167,32 @@ pub fn init_udev() {
             &mut display,
         );
     }
+
+    let renderer = state.backend_data.gpus.single_renderer(&primary_gpu).unwrap();
+    // init dmabuf support with format list from our primary gpu
+    let dmabuf_formats = renderer.dmabuf_formats().collect::<Vec<_>>();
+    let default_feedback = DmabufFeedbackBuilder::new(primary_gpu.dev_id(), dmabuf_formats)
+        .build()
+        .unwrap();
+    let mut dmabuf_state = DmabufState::new();
+    let global = dmabuf_state
+        .create_global_with_default_feedback::<MagmaState<UdevData>>(&display.handle(), &default_feedback);
+    state.backend_data.dmabuf_state = Some((dmabuf_state, global));
+
+    let gpus = &mut state.backend_data.gpus;
+    state.backend_data.devices.values_mut().for_each(|backend_data| {
+        // Update the per drm surface dmabuf feedback
+        backend_data.surfaces.values_mut().for_each(|surface_data| {
+            surface_data.dmabuf_feedback = surface_data.dmabuf_feedback.take().or_else(|| {
+                get_surface_dmabuf_feedback(
+                    primary_gpu,
+                    surface_data.render_node,
+                    gpus,
+                    &surface_data.compositor,
+                )
+            });
+        });
+    });
 
     event_loop
         .handle()
@@ -330,12 +374,21 @@ impl MagmaState<UdevData> {
                     Some(device.gbm.clone())
         
                 ).unwrap();
+
+                let dmabuf_feedback = get_surface_dmabuf_feedback(
+                    self.backend_data.primary_gpu,
+                    device.render_node,
+                    &mut self.backend_data.gpus,
+                    &compositor,
+                );
+
                 let surface = Surface {
                     _dh: display.handle(),
                     _device_id: node,
-                    _render_node: device.render_node,
+                    render_node: device.render_node,
                     _global: Some(global),
                     compositor,
+                    dmabuf_feedback,
                 };
 
                 for workspace in self.workspaces.iter() {
@@ -464,9 +517,10 @@ impl MagmaState<UdevData> {
 pub struct Surface {
     _dh: DisplayHandle,
     _device_id: DrmNode,
-    _render_node: DrmNode,
+    render_node: DrmNode,
     _global: Option<GlobalId>,
     compositor: GbmDrmCompositor,
+    dmabuf_feedback: Option<DrmSurfaceDmabufFeedback>,
 }
 
 impl MagmaState<UdevData> {
@@ -584,4 +638,76 @@ impl MagmaState<UdevData> {
         self.popup_manager.cleanup();
         display.flush_clients().unwrap();
     }
+}
+
+fn get_surface_dmabuf_feedback(
+    primary_gpu: DrmNode,
+    render_node: DrmNode,
+    gpus: &mut GpuManager<GbmGlesBackend<GlesRenderer>>,
+    compositor: &GbmDrmCompositor,
+) -> Option<DrmSurfaceDmabufFeedback> {
+    let primary_formats = gpus
+        .single_renderer(&primary_gpu)
+        .ok()?
+        .dmabuf_formats()
+        .collect::<HashSet<_>>();
+
+    let render_formats = gpus
+        .single_renderer(&render_node)
+        .ok()?
+        .dmabuf_formats()
+        .collect::<HashSet<_>>();
+
+    let all_render_formats = primary_formats
+        .iter()
+        .chain(render_formats.iter())
+        .copied()
+        .collect::<HashSet<_>>();
+
+    let surface = compositor.surface();
+    let planes = surface.planes().unwrap();
+    // We limit the scan-out trache to formats we can also render from
+    // so that there is always a fallback render path available in case
+    // the supplied buffer can not be scanned out directly
+    let planes_formats = surface
+        .supported_formats(planes.primary.handle)
+        .unwrap()
+        .into_iter()
+        .chain(
+            planes
+                .overlay
+                .iter()
+                .flat_map(|p| surface.supported_formats(p.handle).unwrap()),
+        )
+        .collect::<HashSet<_>>()
+        .intersection(&all_render_formats)
+        .copied()
+        .collect::<Vec<_>>();
+
+    let builder = DmabufFeedbackBuilder::new(primary_gpu.dev_id(), primary_formats);
+    let render_feedback = builder
+        .clone()
+        .add_preference_tranche(render_node.dev_id(), None, render_formats.clone())
+        .build()
+        .unwrap();
+
+    let scanout_feedback = builder
+        .add_preference_tranche(
+            surface.device_fd().dev_id().unwrap(),
+            Some(zwp_linux_dmabuf_feedback_v1::TrancheFlags::Scanout),
+            planes_formats,
+        )
+        .add_preference_tranche(render_node.dev_id(), None, render_formats)
+        .build()
+        .unwrap();
+
+    Some(DrmSurfaceDmabufFeedback {
+        render_feedback,
+        scanout_feedback,
+    })
+}
+
+struct DrmSurfaceDmabufFeedback {
+    render_feedback: DmabufFeedback,
+    scanout_feedback: DmabufFeedback,
 }
