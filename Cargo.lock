@@ -373,8 +373,6 @@ dependencies = [
  "drm-fourcc",
  "gbm-sys",
  "libc",
- "wayland-backend",
- "wayland-server",
 ]
 
 [[package]]
@@ -556,9 +554,9 @@ dependencies = [
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d59d8c75012853d2e872fb56bc8a2e53718e2cafe1a4c823143141c6d90c322f"
+checksum = "3f508063cc7bb32987c71511216bd5a32be15bccb6a80b52df8b9d7f01fc3aa2"
 
 [[package]]
 name = "lock_api"
@@ -1030,9 +1028,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.37.11"
+version = "0.37.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "85597d61f83914ddeba6a47b3b8ffe7365107221c2e557ed94426489fefb5f77"
+checksum = "722529a737f5a942fdbac3a46cee213053196737c5eaa3386d52e85b786f2659"
 dependencies = [
  "bitflags",
  "errno 0.3.1",
@@ -1141,13 +1139,11 @@ dependencies = [
  "thiserror",
  "tracing",
  "udev",
- "wayland-backend",
  "wayland-egl",
  "wayland-protocols 0.30.0",
  "wayland-protocols-misc",
  "wayland-protocols-wlr",
  "wayland-server",
- "wayland-sys 0.30.1",
  "winit",
  "xkbcommon",
 ]
@@ -1433,9 +1429,9 @@ checksum = "0046fef7e28c3804e5e38bfa31ea2a0f73905319b677e57ebe37e49358989b5d"
 
 [[package]]
 name = "wayland-backend"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79ebd48bfc1178c9190c7ff80cc822b3335ffc83141e9aa723168f377257623e"
+checksum = "41b48e27457e8da3b2260ac60d0a94512f5cba36448679f3747c0865b7893ed8"
 dependencies = [
  "cc",
  "downcast-rs",
@@ -1599,9 +1595,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "96b2a02ac608e07132978689a6f9bf4214949c85998c247abadd4f4129b1aa06"
 dependencies = [
  "dlib",
- "libc",
  "log",
- "memoffset 0.7.1",
  "pkg-config",
 ]
 
