@@ -1,6 +1,7 @@
 use std::{collections::HashMap, fs::OpenOptions};
 
 use serde::Deserialize;
+use smithay::{output::Mode, utils::{Size, Physical}};
 
 use self::types::{deserialize_KeyModifiers, deserialize_Keysym};
 
@@ -12,7 +13,31 @@ pub struct Config {
 
     #[serde(default = "default_gaps")]
     pub gaps: (i32, i32),
+    #[serde(default = "default_outputs")]
+    pub outputs: HashMap<String, OutputConfig>,
 }
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct OutputConfig ((i32, i32), Option<u32>);
+
+
+impl OutputConfig {
+    pub fn mode_size(&self) -> Size<i32, Physical> {
+        self.0.into()
+    }
+
+    pub fn mode_refresh(&self) -> u32 {
+        self.1.unwrap_or(60_000)
+    }
+
+    pub fn output_mode(&self) -> Mode {
+        Mode {
+            size: self.mode_size(),
+            refresh: self.mode_refresh() as i32,
+        }
+    }
+}
+
 impl Config {
     pub fn load() -> Config {
         let xdg = xdg::BaseDirectories::new().ok();
@@ -38,6 +63,10 @@ impl Config {
 }
 fn default_gaps() -> (i32, i32) {
     (5, 5)
+}
+
+fn default_outputs() -> HashMap<String, OutputConfig> {
+    HashMap::new()
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

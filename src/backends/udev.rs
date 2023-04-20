@@ -31,7 +31,7 @@ use smithay::{
         nix::fcntl::OFlag,
         wayland_server::{Display, DisplayHandle, backend::GlobalId}, wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1,
     },
-    utils::{DeviceFd, Scale, Transform}, wayland::{shell::wlr_layer::Layer, dmabuf::{DmabufGlobal, DmabufState, DmabufHandler, ImportError, DmabufFeedbackBuilder, DmabufFeedback}}, delegate_dmabuf,
+    utils::{DeviceFd, Scale, Transform, Size}, wayland::{shell::wlr_layer::Layer, dmabuf::{DmabufGlobal, DmabufState, DmabufHandler, ImportError, DmabufFeedbackBuilder, DmabufFeedback}}, delegate_dmabuf,
 };
 use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent, DrmScanner},
@@ -291,23 +291,38 @@ impl MagmaState<UdevData> {
                     .single_renderer(&device.render_node)
                     .unwrap();
 
-                    let mode_id = connector
-                    .modes()
-                    .iter()
-                    .position(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
-                    .unwrap_or(0);
-        
-                let drm_mode = connector.modes()[mode_id];
-        
-                let drm_surface = device.drm
-                    .create_surface(crtc, drm_mode, &[connector.handle()])
-                    .unwrap();
-        
                 let name = format!(
                     "{}-{}",
                     connector.interface().as_str(),
                     connector.interface_id()
                 );
+        
+                let drm_mode = if self.config.outputs.contains_key(&name) {
+                    let output_config = &self.config.outputs[&name];
+                    *connector
+                        .modes()
+                        .iter()
+                        .filter(|mode| {
+                            let (x, y) = mode.size();
+                            Size::from((x as i32, y as i32)) == output_config.mode_size()
+                        })
+                            // and then select the closest refresh rate (e.g. to match 59.98 as 60)
+                        .min_by_key(|mode| {
+                            let refresh_rate = WlMode::from(**mode).refresh;
+                            (output_config.mode_refresh() as i32 - refresh_rate as i32).abs()
+                        }).expect("No matching mode found for output config")
+                } else {
+                    *connector
+                    .modes()
+                    .iter()
+                    .find(|mode| mode.mode_type().contains(ModeTypeFlags::PREFERRED))
+                    .unwrap_or(&connector.modes()[0])
+                };
+        
+                let drm_surface = device.drm
+                    .create_surface(crtc, drm_mode, &[connector.handle()])
+                    .unwrap();
+        
         
                 let (make, model) = EdidInfo::for_connector(&device.drm, connector.handle())
                     .map(|info| (info.manufacturer, info.model))
