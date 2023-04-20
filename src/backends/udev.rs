@@ -16,7 +16,7 @@ use smithay::{
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles::{GlesRenderer, GlesRenderbuffer},
+            gles::{GlesRenderer, GlesTexture},
             multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma,
         },
         session::{libseat::LibSeatSession, Session},
@@ -609,7 +609,7 @@ impl MagmaState<UdevData> {
         );
 
         let rendered = surface.compositor
-            .render_frame::<_, _, GlesRenderbuffer>(
+            .render_frame::<_, _, GlesTexture>(
                 &mut renderer,
                 &renderelements,
                 [0.1, 0.1, 0.1, 1.0],
