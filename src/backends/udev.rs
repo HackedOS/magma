@@ -16,8 +16,8 @@ use smithay::{
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles::{GlesRenderer, GlesTexture, GlesRenderbuffer},
-            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer, MultiTexture}, ImportDma, self, Bind, Renderer, Offscreen, Frame, utils, BufferType, ExportMem,
+            gles::{GlesRenderer, GlesTexture},
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma, self, Bind, Renderer, Offscreen, Frame, utils, BufferType, ExportMem,
         },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{self, UdevBackend, UdevEvent}, SwapBuffersError,
@@ -857,13 +857,13 @@ fn get_surface_dmabuf_feedback(
         .collect::<Vec<_>>();
 
     let builder = DmabufFeedbackBuilder::new(primary_gpu.dev_id(), primary_formats);
-    let render_feedback = builder
+    let _render_feedback = builder
         .clone()
         .add_preference_tranche(render_node.dev_id(), None, render_formats.clone())
         .build()
         .unwrap();
 
-    let scanout_feedback = builder
+    let _scanout_feedback = builder
         .add_preference_tranche(
             surface.device_fd().dev_id().unwrap(),
             Some(zwp_linux_dmabuf_feedback_v1::TrancheFlags::Scanout),
@@ -874,14 +874,14 @@ fn get_surface_dmabuf_feedback(
         .unwrap();
 
     Some(DrmSurfaceDmabufFeedback {
-        render_feedback,
-        scanout_feedback,
+        _render_feedback,
+        _scanout_feedback,
     })
 }
 
 struct DrmSurfaceDmabufFeedback {
-    render_feedback: DmabufFeedback,
-    scanout_feedback: DmabufFeedback,
+    _render_feedback: DmabufFeedback,
+    _scanout_feedback: DmabufFeedback,
 }
 
 impl ScreencopyHandler for MagmaState<UdevData> {
