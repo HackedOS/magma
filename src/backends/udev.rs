@@ -189,7 +189,7 @@ pub fn init_udev() {
                             // has no content and damage tracking may prevent a redraw
                             // otherwise
                             surface.compositor.reset_buffers();
-                            data.state.loop_handle.insert_idle(move |data| data.state.render(&mut data.display, node, crtc));
+                            data.state.loop_handle.insert_idle(move |data| data.state.render(node, crtc));
 
                         }
                     }
@@ -253,8 +253,10 @@ pub fn init_udev() {
     std::env::set_var("WAYLAND_DISPLAY", &calloopdata.state.socket_name);
 
     event_loop
-        .run(None, &mut calloopdata, move |_| {
-            // MagmaWM is running
+        .run(None, &mut calloopdata, move |data| {
+            data.state.workspaces.all_windows().for_each(|e| e.refresh());
+            data.state.popup_manager.cleanup();
+            data.display.flush_clients().unwrap();
         })
         .unwrap();
 }
@@ -294,7 +296,6 @@ impl MagmaState<UdevData> {
         node: DrmNode,
         event: drm::DrmEvent,
         _meta: &mut Option<drm::DrmEventMetadata>,
-        display: &mut Display<MagmaState<UdevData>>,
     ) {
         match event {
             drm::DrmEvent::VBlank(crtc) => {
@@ -302,7 +303,6 @@ impl MagmaState<UdevData> {
                 let surface = device.surfaces.get_mut(&crtc).unwrap();
                 surface.compositor.frame_submitted().unwrap();
                 self.render(
-                    display,
                     node,
                     crtc,
                 );
@@ -458,7 +458,6 @@ impl MagmaState<UdevData> {
                 device.surfaces.insert(crtc, surface);
 
                 self.render(
-                    display,
                     node,
                     crtc,
                 );
@@ -537,7 +536,7 @@ impl MagmaState<UdevData> {
             .insert_source(drm_notifier, move |event, meta, calloopdata| {
                 calloopdata
                     .state
-                    .on_drm_event(node, event, meta, &mut calloopdata.display);
+                    .on_drm_event(node, event, meta);
             })
             .unwrap();
 
@@ -586,7 +585,6 @@ pub struct Surface {
 impl MagmaState<UdevData> {
     pub fn render(
         &mut self,
-        display: &mut Display<MagmaState<UdevData>>,
         node: DrmNode,
         crtc: Handle,
     ) 
@@ -718,7 +716,7 @@ impl MagmaState<UdevData> {
             let timer = Timer::from_duration(reschedule_duration);
             self.loop_handle
                 .insert_source(timer, move |_, _, data| {
-                    data.state.render(&mut data.display,node, crtc);
+                    data.state.render(node, crtc);
                     TimeoutAction::Drop
                 })
                 .expect("failed to schedule frame timer");
@@ -740,9 +738,6 @@ impl MagmaState<UdevData> {
                 |_, _| Some(output.clone()),
             );
         }
-        self.workspaces.all_windows().for_each(|e| e.refresh());
-        self.popup_manager.cleanup();
-        display.flush_clients().unwrap();
     }
 }
 
