@@ -11,7 +11,7 @@ use smithay::{
             gbm::{self, GbmAllocator, GbmBufferFlags, GbmDevice},
             Fourcc, dmabuf::Dmabuf,
         },
-        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::DrmCompositor},
+        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::DrmCompositor, DrmError},
         egl::{EGLDevice, EGLDisplay},
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
@@ -19,14 +19,14 @@ use smithay::{
             gles::{GlesRenderer, GlesTexture},
             multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma,
         },
-        session::{libseat::LibSeatSession, Session},
-        udev::{self, UdevBackend, UdevEvent},
+        session::{libseat::LibSeatSession, Event as SessionEvent, Session},
+        udev::{self, UdevBackend, UdevEvent}, SwapBuffersError,
     },
     desktop::{space::SpaceElement, layer_map_for_output, LayerSurface},
     output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
         calloop::{EventLoop, LoopHandle, RegistrationToken, timer::{Timer, TimeoutAction}},
-        drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait},
+        drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait, SystemError},
         input::Libinput,
         nix::fcntl::OFlag,
         wayland_server::{Display, DisplayHandle, backend::GlobalId}, wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1,
@@ -59,7 +59,7 @@ const SUPPORTED_FORMATS: &[Fourcc] = &[
 static CURSOR_DATA: &[u8] = include_bytes!("../../resources/cursor.rgba");
 
 pub struct UdevData {
-    session: LibSeatSession,
+    pub session: LibSeatSession,
     handle: LoopHandle<'static, CalloopData<UdevData>>,
     primary_gpu: DrmNode,
     gpus: GpuManager<GbmGlesBackend<GlesRenderer>>,
@@ -111,10 +111,6 @@ pub fn init_udev() {
             return;
         }
     };
-    event_loop
-        .handle()
-        .insert_source(notifier, |_, _, _| {})
-        .unwrap();
 
     /*
      * Initialize the compositor
@@ -144,12 +140,61 @@ pub fn init_udev() {
         .udev_assign_seat(&state.backend_data.session.seat())
         .unwrap();
 
-    let libinput_backend = LibinputInputBackend::new(libinput_context);
+    let libinput_backend = LibinputInputBackend::new(libinput_context.clone());
 
     event_loop
         .handle()
         .insert_source(libinput_backend, move |event, _, calloopdata| {
-            calloopdata.state.process_input_event(event)
+            if let Some(vt) = calloopdata.state.process_input_event_udev(event) {
+                info!(to = vt, "Trying to switch vt");
+                if let Err(err) = calloopdata.state.backend_data.session.change_vt(vt) {
+                    error!(vt, "Error switching vt: {}", err);
+                }
+            }
+        })
+        .unwrap();
+
+        event_loop
+        .handle()
+        .insert_source(notifier, move |event, _, data| {
+            match event {
+                SessionEvent::PauseSession => {
+                    libinput_context.suspend();
+                    info!("pausing session");
+    
+                    for backend in data.state.backend_data.devices.values() {
+                        backend.drm.pause();
+                    }
+                }
+                SessionEvent::ActivateSession => {
+                    info!("resuming session");
+    
+                    if let Err(err) = libinput_context.resume() {
+                        error!("Failed to resume libinput context: {:?}", err);
+                    }
+                    for (node, backend) in data
+                        .state
+                        .backend_data
+                        .devices
+                        .iter_mut()
+                        .map(|(handle, backend)| (*handle, backend))
+                    {
+                        backend.drm.activate();
+                        for (crtc, surface) in backend.surfaces.iter_mut().map(|(handle, surface)| (*handle, surface)) {
+                            if let Err(err) = surface.compositor.surface().reset_state() {
+                                warn!("Failed to reset drm surface state: {}", err);
+                            }
+                            // reset the buffers after resume to trigger a full redraw
+                            // this is important after a vt switch as the primary plane
+                            // has no content and damage tracking may prevent a redraw
+                            // otherwise
+                            surface.compositor.reset_buffers();
+                            data.state.loop_handle.insert_idle(move |data| data.state.render(&mut data.display, node, crtc));
+
+                        }
+                    }
+                }
+            }
         })
         .unwrap();
 
@@ -631,9 +676,32 @@ impl MagmaState<UdevData> {
             )
             .unwrap().damage.is_some();
         
+        let mut result = Ok(rendered);
         if rendered {
-            surface.compositor.queue_frame(()).unwrap();
-        } else {
+            let queueresult = surface.compositor.queue_frame(()).map_err(Into::<SwapBuffersError>::into);
+            if queueresult.is_err() {result = Err(queueresult.unwrap_err());}
+        }
+
+        let reschedule = match &result {
+            Ok(has_rendered) => !has_rendered,
+            Err(err) => {
+                warn!("Error during rendering: {:?}", err);
+                match err {
+                    SwapBuffersError::AlreadySwapped => false,
+                    SwapBuffersError::TemporaryFailure(err) => !matches!(
+                        err.downcast_ref::<DrmError>(),
+                        Some(&DrmError::DeviceInactive)
+                            | Some(&DrmError::Access {
+                                source: SystemError::PermissionDenied,
+                                ..
+                            })
+                    ),
+                    SwapBuffersError::ContextLost(err) => panic!("Rendering loop lost: {}", err),
+                }
+            }
+        };
+
+        if reschedule  {
             let output_refresh = match output.current_mode() {
                 Some(mode) => mode.refresh,
                 None => return,

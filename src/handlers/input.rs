@@ -48,6 +48,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
                     info!("{} {} {}", err, "Failed to spawn \"{}\"", command);
                 }
             }
+            Action::VTSwitch(_) => {info!("VTSwitch is not used in Winit backend.")},
         }
     }
 }

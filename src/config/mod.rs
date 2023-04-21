@@ -109,6 +109,6 @@ pub enum Action {
     MoveWindowToWorkspace(u8),
     MoveWindowAndSwitchToWorkspace(u8),
     ToggleWindowFloating,
-
+    VTSwitch(i32),
     Spawn(String),
 }
