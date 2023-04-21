@@ -11,7 +11,7 @@ serde = { version = "1", features = ["derive"] }
 xdg = "^2.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
-smithay-drm-extras = { git = "https://github.com/PolyMeilex/smithay.git", branch = "null-byte-manufacturer"}
+smithay-drm-extras = { git = "https://github.com/Smithay/smithay.git"}
 
 [dependencies.smithay]
 git = "https://github.com/Smithay/smithay.git"
