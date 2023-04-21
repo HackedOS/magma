@@ -3,3 +3,4 @@ pub mod render;
 pub mod tiling;
 pub mod workspaces;
 pub mod focus;
+pub mod protocols;

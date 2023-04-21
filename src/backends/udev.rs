@@ -11,13 +11,13 @@ use smithay::{
             gbm::{self, GbmAllocator, GbmBufferFlags, GbmDevice},
             Fourcc, dmabuf::Dmabuf,
         },
-        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::DrmCompositor, DrmError},
+        drm::{self, DrmDevice, DrmDeviceFd, DrmNode, NodeType, compositor::{DrmCompositor}, DrmError},
         egl::{EGLDevice, EGLDisplay},
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
-            gles::{GlesRenderer, GlesTexture},
-            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma,
+            gles::{GlesRenderer, GlesTexture, GlesRenderbuffer},
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer, MultiTexture}, ImportDma, self, Bind, Renderer, Offscreen, Frame, utils, BufferType, ExportMem,
         },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{self, UdevBackend, UdevEvent}, SwapBuffersError,
@@ -29,9 +29,9 @@ use smithay::{
         drm::{control::{crtc::{self, Handle}, ModeTypeFlags}, Device as DrmDeviceTrait, SystemError},
         input::Libinput,
         nix::fcntl::OFlag,
-        wayland_server::{Display, DisplayHandle, backend::GlobalId}, wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1,
+        wayland_server::{Display, DisplayHandle, backend::GlobalId, protocol::{wl_output::WlOutput, wl_shm}}, wayland_protocols::wp::linux_dmabuf::zv1::server::zwp_linux_dmabuf_feedback_v1,
     },
-    utils::{DeviceFd, Scale, Transform, Size}, wayland::{shell::wlr_layer::Layer, dmabuf::{DmabufGlobal, DmabufState, DmabufHandler, ImportError, DmabufFeedbackBuilder, DmabufFeedback}}, delegate_dmabuf,
+    utils::{DeviceFd, Scale, Transform, Size, Rectangle, Point}, wayland::{shell::wlr_layer::Layer, dmabuf::{DmabufGlobal, DmabufState, DmabufHandler, ImportError, DmabufFeedbackBuilder, DmabufFeedback}, shm}, delegate_dmabuf,
 };
 use smithay_drm_extras::{
     drm_scanner::{self, DrmScanEvent, DrmScanner},
@@ -41,7 +41,7 @@ use tracing::{error, info, warn, trace};
 
 use crate::{
     state::{Backend, CalloopData, MagmaState},
-    utils::{render::CustomRenderElements},
+    utils::{render::CustomRenderElements, protocols::screencopy::{ScreencopyManagerState, frame::Screencopy, ScreencopyHandler}}, delegate_screencopy_manager,
 };
 pub type GbmDrmCompositor = DrmCompositor<
     GbmAllocator<DrmDeviceFd>,
@@ -130,6 +130,8 @@ pub fn init_udev() {
     };
 
     let mut state = MagmaState::new(event_loop.handle(), event_loop.get_signal(), &mut display, data);
+    ScreencopyManagerState::new::<MagmaState<UdevData>>(&display.handle());
+    
     /*
      * Add input source
      */
@@ -189,7 +191,7 @@ pub fn init_udev() {
                             // has no content and damage tracking may prevent a redraw
                             // otherwise
                             surface.compositor.reset_buffers();
-                            data.state.loop_handle.insert_idle(move |data| data.state.render(node, crtc));
+                            data.state.loop_handle.insert_idle(move |data| data.state.render(node, crtc, None));
 
                         }
                     }
@@ -305,6 +307,7 @@ impl MagmaState<UdevData> {
                 self.render(
                     node,
                     crtc,
+                    None
                 );
                 
             }
@@ -449,6 +452,7 @@ impl MagmaState<UdevData> {
                     _global: Some(global),
                     compositor,
                     dmabuf_feedback,
+                    output: output.clone(),
                 };
 
                 for workspace in self.workspaces.iter() {
@@ -460,6 +464,7 @@ impl MagmaState<UdevData> {
                 self.render(
                     node,
                     crtc,
+                    None
                 );
             }
             DrmScanEvent::Disconnected {
@@ -580,6 +585,7 @@ pub struct Surface {
     _global: Option<GlobalId>,
     compositor: GbmDrmCompositor,
     dmabuf_feedback: Option<DrmSurfaceDmabufFeedback>,
+    output: Output,
 }
 
 impl MagmaState<UdevData> {
@@ -587,6 +593,7 @@ impl MagmaState<UdevData> {
         &mut self,
         node: DrmNode,
         crtc: Handle,
+        screencopy: Option<Screencopy>,
     ) 
     {      
         let device = self.backend_data.devices.get_mut(&node).unwrap();
@@ -665,7 +672,7 @@ impl MagmaState<UdevData> {
                     .map(CustomRenderElements::Surface)
                 }),
         );
-
+        
         let rendered = surface.compositor
             .render_frame::<_, _, GlesTexture>(
                 &mut renderer,
@@ -674,6 +681,70 @@ impl MagmaState<UdevData> {
             )
             .unwrap().damage.is_some();
         
+        // Copy framebuffer for screencopy.
+        if let Some(mut screencopy) = screencopy {
+            // Mark entire buffer as damaged.
+            let region = screencopy.region();
+            let damage = [Rectangle::from_loc_and_size((0, 0), region.size)];
+            screencopy.damage(&damage);
+
+            let shm_buffer = screencopy.buffer();
+
+            // Ignore unknown buffer types.
+            let buffer_type = renderer::buffer_type(shm_buffer);
+            if !matches!(buffer_type, Some(BufferType::Shm)) {
+                warn!("Unsupported buffer type: {:?}", buffer_type);
+                return
+            }
+
+                    // Create and bind an offscreen render buffer.
+            let buffer_dimensions = renderer::buffer_dimensions(shm_buffer).unwrap();
+            let offscreen_buffer = Offscreen::<GlesTexture>::create_buffer(&mut renderer,Fourcc::Argb8888,buffer_dimensions).unwrap();
+            renderer.bind(offscreen_buffer).unwrap();
+
+            let output = self.workspaces.outputs().next().unwrap();
+            let scale = output.current_scale().fractional_scale();
+            let output_size = output.current_mode().unwrap().size;
+            let transform = output.current_transform();
+
+            // Calculate drawing area after output transform.
+            let damage = transform.transform_rect_in(region, &output_size);
+
+
+            // Initialize the buffer to our clear color.
+            let mut frame = renderer.render(output_size, transform).unwrap();
+            frame.clear([0.1, 0.1, 0.1, 1.0], &[damage]).unwrap();
+
+            // Render everything to the offscreen buffer.
+            utils::draw_render_elements(&mut frame, scale, &renderelements, &[damage]).unwrap();
+
+            // Ensure rendering was fully completed.
+            frame.finish().unwrap();
+            let region = Rectangle { loc: Point::from((region.loc.x, region.loc.y)), size: Size::from((region.size.w, region.size.h)) };
+            let mapping = renderer.copy_framebuffer(region, Fourcc::Argb8888).unwrap();
+            let buffer = renderer.map_texture(&mapping);
+            // shm_buffer.
+            // Copy offscreen buffer's content to the SHM buffer.
+            shm::with_buffer_contents_mut(shm_buffer, |shm_buffer_ptr, shm_len, buffer_data| {
+                // Ensure SHM buffer is in an acceptable format.
+                if dbg!(buffer_data.format) != wl_shm::Format::Argb8888
+                    || buffer_data.stride != region.size.w * 4
+                    || buffer_data.height != region.size.h
+                    || shm_len as i32 != buffer_data.stride * buffer_data.height
+                {  
+                    error!("Invalid buffer format");
+                    return;
+                }
+                
+                // Copy the offscreen buffer's content to the SHM buffer.
+                unsafe { shm_buffer_ptr.copy_from(buffer.unwrap().as_ptr(), shm_len) };
+            }).unwrap();
+
+
+            // Mark screencopy frame as successful.
+            screencopy.submit();
+        }
+
         let mut result = Ok(rendered);
         if rendered {
             let queueresult = surface.compositor.queue_frame(()).map_err(Into::<SwapBuffersError>::into);
@@ -716,7 +787,7 @@ impl MagmaState<UdevData> {
             let timer = Timer::from_duration(reschedule_duration);
             self.loop_handle
                 .insert_source(timer, move |_, _, data| {
-                    data.state.render(node, crtc);
+                    data.state.render(node, crtc,None);
                     TimeoutAction::Drop
                 })
                 .expect("failed to schedule frame timer");
@@ -812,3 +883,22 @@ struct DrmSurfaceDmabufFeedback {
     render_feedback: DmabufFeedback,
     scanout_feedback: DmabufFeedback,
 }
+
+impl ScreencopyHandler for MagmaState<UdevData> {
+    fn output(&mut self, output: &WlOutput) -> &Output {
+        self.workspaces.outputs().find(|o| o.owns(output)).unwrap()
+    }
+
+    fn frame(&mut self, frame: Screencopy) {
+        for (node, device) in &self.backend_data.devices {
+            for (crtc, surface) in &device.surfaces {
+                if surface.output == frame.output {
+                    self.render(*node, *crtc, Some(frame));
+                    return;
+                }
+            }
+        }
+    }
+}
+
+delegate_screencopy_manager!(MagmaState<UdevData>);
