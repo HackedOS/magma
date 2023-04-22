@@ -1,7 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use smithay::{
-    desktop::Window,
+    desktop::{Window, layer_map_for_output},
     utils::{Logical, Physical, Point, Rectangle, Size},
 };
 
@@ -21,21 +21,18 @@ pub fn bsp_layout(
     event: WindowLayoutEvent,
     gaps: (i32, i32),
 ) {
-    let output = workspace
+    let output = layer_map_for_output(workspace
         .outputs()
         .next()
-        .unwrap()
-        .current_mode()
-        .unwrap()
-        .size;
+        .unwrap()).non_exclusive_zone();
 
     match event {
         WindowLayoutEvent::Added => {
             let window = Rc::new(RefCell::new(MagmaWindow {
                 window,
                 rec: Rectangle {
-                    loc: Point::from((gaps.0, gaps.0)),
-                    size: Size::from((output.w - (gaps.0 * 2), output.h - (gaps.0 * 2))),
+                    loc: Point::from((gaps.0 + output.loc.x, gaps.0 + output.loc.y)),
+                    size: Size::from((output.size.w - (gaps.0 * 2), output.size.h - (gaps.0 * 2))),
                 },
             }));
             workspace.add_window(window);
@@ -53,22 +50,21 @@ pub fn bsp_layout(
 pub fn bsp_update_layout(workspace: &mut Workspace, gaps: (i32, i32)) {
     //recalculate the size and location of the windows
 
-    let output = workspace
+    let output = layer_map_for_output(workspace
         .outputs()
         .next()
-        .unwrap()
-        .current_mode()
-        .unwrap()
-        .size;
+        .unwrap()).non_exclusive_zone();
+
+    let output_full = workspace.outputs().next().unwrap().current_mode().unwrap().size;
 
     match &mut workspace.layout_tree {
         BinaryTree::Empty => {}
         BinaryTree::Window(w) => {
             w.borrow_mut().rec = Rectangle {
-                loc: Point::from((gaps.0 + gaps.1, gaps.0 + gaps.1)),
+                loc: Point::from((gaps.0 + gaps.1 + output.loc.x, gaps.0 + gaps.1 + output.loc.y)),
                 size: Size::from((
-                    output.w - ((gaps.0 + gaps.1) * 2),
-                    output.h - ((gaps.0 + gaps.1) * 2),
+                    output.size.w - ((gaps.0 + gaps.1) * 2),
+                    output.size.h - ((gaps.0 + gaps.1) * 2),
                 )),
             };
         }
@@ -83,12 +79,12 @@ pub fn bsp_update_layout(workspace: &mut Workspace, gaps: (i32, i32)) {
                     right.as_mut(),
                     &w,
                     Rectangle {
-                        loc: Point::from((gaps.0, gaps.0)),
-                        size: Size::from((output.w - (gaps.0 * 2), output.h - (gaps.0 * 2))),
+                        loc: Point::from((gaps.0 + output.loc.x, gaps.0 + output.loc.y)),
+                        size: Size::from((output.size.w - (gaps.0 * 2), output.size.h - (gaps.0 * 2))),
                     },
                     *split,
                     *ratio,
-                    Size::from((output.w - (gaps.0), output.h - (gaps.0))),
+                    Size::from((output_full.w - gaps.0, output_full.h - gaps.0)),
                     gaps,
                 )
             }
