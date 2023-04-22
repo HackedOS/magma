@@ -191,7 +191,15 @@ pub fn init_udev() {
                             // has no content and damage tracking may prevent a redraw
                             // otherwise
                             surface.compositor.reset_buffers();
-                            data.state.loop_handle.insert_idle(move |data| data.state.render(node, crtc, None));
+                            data.state.loop_handle.insert_idle(move |data| { 
+                                if let Some(err) = data.state.render(node, crtc, None).err() {
+                                    if let SwapBuffersError::ContextLost(_) = err {
+                                        info!("Context lost on device {}, re-creating", node);
+                                        data.state.on_device_removed(node);
+                                        data.state.on_device_added(node, node.dev_path().unwrap(), &mut data.display);
+                                    }
+                                }
+                            });
 
                         }
                     }
@@ -308,7 +316,7 @@ impl MagmaState<UdevData> {
                     node,
                     crtc,
                     None
-                );
+                ).ok();
                 
             }
             drm::DrmEvent::Error(_) => {}
@@ -454,7 +462,7 @@ impl MagmaState<UdevData> {
                     dmabuf_feedback,
                     output: output.clone(),
                 };
-
+                
                 for workspace in self.workspaces.iter() {
                     workspace.add_output(output.clone())
                 }
@@ -465,7 +473,7 @@ impl MagmaState<UdevData> {
                     node,
                     crtc,
                     None
-                );
+                ).ok();
             }
             DrmScanEvent::Disconnected {
                 crtc: Some(crtc), ..
@@ -516,7 +524,7 @@ impl MagmaState<UdevData> {
 
         let fd = DrmDeviceFd::new(unsafe { DeviceFd::from_raw_fd(fd) });
 
-        let (drm, drm_notifier) = drm::DrmDevice::new(fd, false).unwrap();
+        let (drm, drm_notifier) = drm::DrmDevice::new(fd, true).unwrap();
 
         let gbm = gbm::GbmDevice::new(drm.device_fd().clone()).unwrap();
 
@@ -594,7 +602,7 @@ impl MagmaState<UdevData> {
         node: DrmNode,
         crtc: Handle,
         screencopy: Option<Screencopy>,
-    ) 
+    ) -> Result<bool, SwapBuffersError>
     {      
         let device = self.backend_data.devices.get_mut(&node).unwrap();
         let surface = device.surfaces.get_mut(&crtc).unwrap();
@@ -694,56 +702,55 @@ impl MagmaState<UdevData> {
             let buffer_type = renderer::buffer_type(shm_buffer);
             if !matches!(buffer_type, Some(BufferType::Shm)) {
                 warn!("Unsupported buffer type: {:?}", buffer_type);
-                return
+            } else
+            {
+                // Create and bind an offscreen render buffer.
+                let buffer_dimensions = renderer::buffer_dimensions(shm_buffer).unwrap();
+                let offscreen_buffer = Offscreen::<GlesTexture>::create_buffer(&mut renderer,Fourcc::Argb8888,buffer_dimensions).unwrap();
+                renderer.bind(offscreen_buffer).unwrap();
+
+                let output = &screencopy.output;
+                let scale = output.current_scale().fractional_scale();
+                let output_size = output.current_mode().unwrap().size;
+                let transform = output.current_transform();
+
+                // Calculate drawing area after output transform.
+                let damage = transform.transform_rect_in(region, &output_size);
+
+
+                // Initialize the buffer to our clear color.
+                let mut frame = renderer.render(output_size, transform).unwrap();
+                frame.clear([0.1, 0.1, 0.1, 1.0], &[damage]).unwrap();
+
+                // Render everything to the offscreen buffer.
+                utils::draw_render_elements(&mut frame, scale, &renderelements, &[damage]).unwrap();
+
+                // Ensure rendering was fully completed.
+                frame.finish().unwrap();
+                let region = Rectangle { loc: Point::from((region.loc.x, region.loc.y)), size: Size::from((region.size.w, region.size.h)) };
+                let mapping = renderer.copy_framebuffer(region, Fourcc::Argb8888).unwrap();
+                let buffer = renderer.map_texture(&mapping);
+                // shm_buffer.
+                // Copy offscreen buffer's content to the SHM buffer.
+                shm::with_buffer_contents_mut(shm_buffer, |shm_buffer_ptr, shm_len, buffer_data| {
+                    // Ensure SHM buffer is in an acceptable format.
+                    if dbg!(buffer_data.format) != wl_shm::Format::Argb8888
+                        || buffer_data.stride != region.size.w * 4
+                        || buffer_data.height != region.size.h
+                        || shm_len as i32 != buffer_data.stride * buffer_data.height
+                    {  
+                        error!("Invalid buffer format");
+                        return;
+                    }
+                    
+                    // Copy the offscreen buffer's content to the SHM buffer.
+                    unsafe { shm_buffer_ptr.copy_from(buffer.unwrap().as_ptr(), shm_len) };
+                }).unwrap();
             }
 
-                    // Create and bind an offscreen render buffer.
-            let buffer_dimensions = renderer::buffer_dimensions(shm_buffer).unwrap();
-            let offscreen_buffer = Offscreen::<GlesTexture>::create_buffer(&mut renderer,Fourcc::Argb8888,buffer_dimensions).unwrap();
-            renderer.bind(offscreen_buffer).unwrap();
-
-            let output = self.workspaces.outputs().next().unwrap();
-            let scale = output.current_scale().fractional_scale();
-            let output_size = output.current_mode().unwrap().size;
-            let transform = output.current_transform();
-
-            // Calculate drawing area after output transform.
-            let damage = transform.transform_rect_in(region, &output_size);
-
-
-            // Initialize the buffer to our clear color.
-            let mut frame = renderer.render(output_size, transform).unwrap();
-            frame.clear([0.1, 0.1, 0.1, 1.0], &[damage]).unwrap();
-
-            // Render everything to the offscreen buffer.
-            utils::draw_render_elements(&mut frame, scale, &renderelements, &[damage]).unwrap();
-
-            // Ensure rendering was fully completed.
-            frame.finish().unwrap();
-            let region = Rectangle { loc: Point::from((region.loc.x, region.loc.y)), size: Size::from((region.size.w, region.size.h)) };
-            let mapping = renderer.copy_framebuffer(region, Fourcc::Argb8888).unwrap();
-            let buffer = renderer.map_texture(&mapping);
-            // shm_buffer.
-            // Copy offscreen buffer's content to the SHM buffer.
-            shm::with_buffer_contents_mut(shm_buffer, |shm_buffer_ptr, shm_len, buffer_data| {
-                // Ensure SHM buffer is in an acceptable format.
-                if dbg!(buffer_data.format) != wl_shm::Format::Argb8888
-                    || buffer_data.stride != region.size.w * 4
-                    || buffer_data.height != region.size.h
-                    || shm_len as i32 != buffer_data.stride * buffer_data.height
-                {  
-                    error!("Invalid buffer format");
-                    return;
-                }
-                
-                // Copy the offscreen buffer's content to the SHM buffer.
-                unsafe { shm_buffer_ptr.copy_from(buffer.unwrap().as_ptr(), shm_len) };
-            }).unwrap();
-
-
-            // Mark screencopy frame as successful.
-            screencopy.submit();
-        }
+                // Mark screencopy frame as successful.
+                screencopy.submit();
+            }
 
         let mut result = Ok(rendered);
         if rendered {
@@ -765,7 +772,7 @@ impl MagmaState<UdevData> {
                                 ..
                             })
                     ),
-                    SwapBuffersError::ContextLost(err) => panic!("Rendering loop lost: {}", err),
+                    SwapBuffersError::ContextLost(err) => {warn!("Rendering loop lost: {}", err); false},
                 }
             }
         };
@@ -773,7 +780,7 @@ impl MagmaState<UdevData> {
         if reschedule  {
             let output_refresh = match output.current_mode() {
                 Some(mode) => mode.refresh,
-                None => return,
+                None => return result,
             };
             // If reschedule is true we either hit a temporary failure or more likely rendering
             // did not cause any damage on the output. In this case we just re-schedule a repaint
@@ -787,7 +794,7 @@ impl MagmaState<UdevData> {
             let timer = Timer::from_duration(reschedule_duration);
             self.loop_handle
                 .insert_source(timer, move |_, _, data| {
-                    data.state.render(node, crtc,None);
+                    data.state.render(node, crtc,None).ok();
                     TimeoutAction::Drop
                 })
                 .expect("failed to schedule frame timer");
@@ -809,6 +816,8 @@ impl MagmaState<UdevData> {
                 |_, _| Some(output.clone()),
             );
         }
+
+        result
     }
 }
 
@@ -893,7 +902,7 @@ impl ScreencopyHandler for MagmaState<UdevData> {
         for (node, device) in &self.backend_data.devices {
             for (crtc, surface) in &device.surfaces {
                 if surface.output == frame.output {
-                    self.render(*node, *crtc, Some(frame));
+                    self.render(*node, *crtc, Some(frame)).ok();
                     return;
                 }
             }
