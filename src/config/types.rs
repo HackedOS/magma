@@ -14,7 +14,6 @@ impl From<KeyModifiersDef> for KeyModifiers {
                 ctrl: false,
                 alt: false,
                 shift: false,
-                caps_lock: false,
                 logo: false,
             },
             |mut modis, modi: KeyModifier| {
@@ -68,7 +67,6 @@ impl std::ops::AddAssign<KeyModifier> for KeyModifiers {
             KeyModifier::Alt => self.alt = true,
             KeyModifier::Shift => self.shift = true,
             KeyModifier::Super => self.logo = true,
-            KeyModifier::CapsLock => self.caps_lock = true,
         };
     }
 }
@@ -79,6 +77,5 @@ impl PartialEq<ModifiersState> for KeyModifiers {
             && self.alt == other.alt
             && self.shift == other.shift
             && self.logo == other.logo
-            && self.caps_lock == other.caps_lock
     }
 }

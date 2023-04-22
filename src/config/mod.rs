@@ -75,7 +75,6 @@ pub enum KeyModifier {
     Alt,
     Shift,
     Super,
-    CapsLock,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -84,7 +83,6 @@ pub struct KeyModifiers {
     alt: bool,
     shift: bool,
     logo: bool,
-    caps_lock: bool,
 }
 
 /// Describtion of a key combination that might be
