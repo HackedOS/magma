@@ -70,7 +70,7 @@ impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
     }
 
     fn grab(&mut self, _surface: PopupSurface, _seat: WlSeat, _serial: Serial) {
-        todo!()
+        // TODO
     }
 }
 
