@@ -262,6 +262,16 @@ pub fn init_udev() {
 
     std::env::set_var("WAYLAND_DISPLAY", &calloopdata.state.socket_name);
 
+    for command in &calloopdata.state.config.autostart {
+        if let Err(err) = std::process::Command::new("/bin/sh")
+        .arg("-c")
+        .arg(command)
+        .spawn()
+            {
+                info!("{} {} {}", err, "Failed to spawn \"{}\"", command);
+            }
+    }
+        
     event_loop
         .run(None, &mut calloopdata, move |data| {
             data.state.workspaces.all_windows().for_each(|e| e.refresh());
