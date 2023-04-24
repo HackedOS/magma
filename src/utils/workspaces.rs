@@ -105,8 +105,8 @@ impl Workspace {
         self.outputs.push(output);
     }
 
-    pub fn _remove_output(&mut self, output: &Output) {
-        self.outputs.retain(|o| o != output);
+    pub fn remove_outputs(&mut self) {
+        self.outputs.clear()
     }
 
     pub fn output_geometry(&self, o: &Output) -> Option<Rectangle<i32, Logical>> {

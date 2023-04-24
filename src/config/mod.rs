@@ -3,7 +3,7 @@ use std::{collections::HashMap, fs::OpenOptions};
 use serde::Deserialize;
 use smithay::{output::Mode, utils::{Size, Physical}};
 
-use self::types::{deserialize_KeyModifiers, deserialize_Keysym};
+use self::types::{deserialize_KeyModifiers, deserialize_Keysym, XkbConfig};
 
 mod types;
 #[derive(Debug, Deserialize)]
@@ -15,6 +15,10 @@ pub struct Config {
     pub gaps: (i32, i32),
     #[serde(default = "default_outputs")]
     pub outputs: HashMap<String, OutputConfig>,
+    #[serde(default = "default_autostart")]
+    pub autostart: Vec<String>,
+
+    pub xkb: XkbConfig,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -64,7 +68,9 @@ impl Config {
 fn default_gaps() -> (i32, i32) {
     (5, 5)
 }
-
+fn default_autostart() -> Vec<String> {
+    vec![]
+}
 fn default_outputs() -> HashMap<String, OutputConfig> {
     HashMap::new()
 }

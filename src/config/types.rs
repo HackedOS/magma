@@ -1,5 +1,5 @@
 use serde::Deserialize;
-use smithay::input::keyboard::{keysyms as KeySyms, xkb, Keysym, ModifiersState};
+use smithay::input::keyboard::{keysyms as KeySyms, xkb, Keysym, ModifiersState, XkbConfig as WlXkbConfig};
 
 use super::{KeyModifier, KeyModifiers};
 
@@ -77,5 +77,38 @@ impl PartialEq<ModifiersState> for KeyModifiers {
             && self.alt == other.alt
             && self.shift == other.shift
             && self.logo == other.logo
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct XkbConfig {
+    pub rules: String,
+    pub model: String,
+    pub layout: String,
+    pub variant: String,
+    pub options: Option<String>,
+}
+
+impl Default for XkbConfig {
+    fn default() -> XkbConfig {
+        XkbConfig {
+            rules: String::new(),
+            model: String::new(),
+            layout: String::new(),
+            variant: String::new(),
+            options: None,
+        }
+    }
+}
+
+impl<'a> Into<WlXkbConfig<'a>> for &'a XkbConfig {
+    fn into(self) -> WlXkbConfig<'a> {
+        WlXkbConfig {
+            rules: &self.rules,
+            model: &self.model,
+            layout: &self.layout,
+            variant: &self.variant,
+            options: self.options.clone(),
+        }
     }
 }

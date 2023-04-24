@@ -2,7 +2,7 @@ use std::{ffi::OsString, os::fd::AsRawFd, sync::Arc, time::Instant};
 
 use smithay::{
     desktop::{Window, PopupManager, layer_map_for_output},
-    input::{Seat, SeatState},
+    input::{Seat, SeatState, keyboard::XkbConfig},
     reexports::{
         calloop::{generic::Generic, Interest, LoopSignal, Mode, PostAction, LoopHandle},
         wayland_server::{
@@ -20,6 +20,7 @@ use smithay::{
         socket::ListeningSocketSource, primary_selection::PrimarySelectionState,
     },
 };
+use tracing::warn;
 
 use crate::{config::Config, utils::{workspaces::Workspaces, focus::FocusTarget}, ipc::{MagmaIpcManager, MagmaIpcHandler}, delegate_magma_ipc};
 
@@ -84,7 +85,15 @@ impl<BackendData: Backend> MagmaState<BackendData> {
         let layer_shell_state = WlrLayerShellState::new::<Self>(&dh);
         let seat_name = backend_data.seat_name();
         let mut seat = seat_state.new_wl_seat(&dh, seat_name.clone());
-        seat.add_keyboard(Default::default(), 600, 25).unwrap();
+        let conf = config.xkb.clone();
+        if let Err(err) = seat.add_keyboard((&conf).into(), 200, 25) {
+            warn!(
+                ?err,
+                "Failed to load provided xkb config. Trying default...",
+            );
+            seat.add_keyboard(XkbConfig::default(), 200, 25)
+                .expect("Failed to load xkb configuration files");
+        }
         seat.add_pointer();
 
         let workspaces = Workspaces::new(config.workspaces);
