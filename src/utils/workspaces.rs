@@ -156,7 +156,7 @@ impl Workspace {
 
 pub struct Workspaces {
     workspaces: Vec<Workspace>,
-    current: u8,
+    pub current: u8,
 }
 
 impl Workspaces {
