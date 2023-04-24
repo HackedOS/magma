@@ -40,6 +40,7 @@ impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
             self.config.gaps,
         );
         self.set_input_focus(FocusTarget::Window(window));
+        self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
     }
     fn toplevel_destroyed(&mut self, surface: ToplevelSurface) {
         let window = self
@@ -58,6 +59,7 @@ impl<BackendData: Backend> XdgShellHandler for MagmaState<BackendData> {
         );
 
         self.set_input_focus_auto();
+        self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
     }
     fn new_popup(&mut self, surface: PopupSurface, positioner: PositionerState) {
         surface.with_pending_state(|state| {

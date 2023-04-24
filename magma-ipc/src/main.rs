@@ -45,6 +45,11 @@ impl Dispatch<Workspaces, ()> for State {
                     println!("{}", id)
                 }
             },
+            WorkspacesEvent::OccupiedWorkspaces { occupied } => {
+                if "occupied_workspaces" == state.0 {
+                    println!("{:?}", occupied)
+                }
+            },
         }
     }
 }

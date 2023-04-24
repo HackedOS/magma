@@ -97,6 +97,5 @@ macro_rules! delegate_magma_ipc {
 }
 
 pub trait MagmaIpcHandler {
-    fn active_workspace(&self) -> u32;
     fn register_workspace(&mut self, workspace: Workspaces);
 }

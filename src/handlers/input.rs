@@ -34,6 +34,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
                     self.workspaces
                         .move_window_to_workspace(&window, id, self.config.gaps);
                 }
+                self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
             }
             Action::MoveWindowAndSwitchToWorkspace(u8) => {
                 self.handle_action(Action::MoveWindowToWorkspace(u8));

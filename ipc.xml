@@ -18,6 +18,10 @@
             <description summary = "active workspace changed">active workspace changed</description>
             <arg name="id" type="uint" summary="workspace id"/>
         </event>
+        <event name="occupied_workspaces">
+            <description summary = "workspace occupation changed">occupied workspaces changed</description>
+            <arg name="occupied" type="array" summary="occupied workspaces"/>
+        </event>
     </interface>
 
 </protocol>

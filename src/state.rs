@@ -214,12 +214,9 @@ impl ClientData for ClientState {
 delegate_magma_ipc!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
 
 impl<BackendData: Backend> MagmaIpcHandler for MagmaState<BackendData> {
-    fn active_workspace(&self) -> u32 {
-        self.workspaces.current.into()
-    }
-
     fn register_workspace(&mut self, workspace: crate::ipc::generated::workspaces::Workspaces) {
-        workspace.active_workspace(self.workspaces.current.into());
         self.ipc_manager.workspace_handles.push(workspace);
+        self.ipc_manager.update_active_workspace(self.workspaces.current.into());
+        self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
     }
 }
