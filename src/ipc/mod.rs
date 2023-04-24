@@ -14,7 +14,9 @@ use smithay::reexports::wayland_server::{GlobalDispatch, Dispatch, DisplayHandle
 use self::generated::{magma_ipc::{MagmaIpc, Request}, workspaces::Workspaces};
 
 
-pub struct MagmaIpcManager;
+pub struct MagmaIpcManager {
+    pub workspace_handles: Vec<Workspaces>,
+}
 
 impl MagmaIpcManager {
     pub fn new<D>(display: &DisplayHandle) -> Self
@@ -27,7 +29,9 @@ impl MagmaIpcManager {
     {
         display.create_global::<D, MagmaIpc, _>(1, ());
 
-        Self
+        Self {
+            workspace_handles: Vec::new(),
+        }
     }
 }
 
@@ -69,7 +73,7 @@ where
         data_init: &mut DataInit<'_, D>,
     ) {
         match request {
-            Request::Workspaces { id } => data_init.init(id, ()).active_workspace(state.active_workspace()),
+            Request::Workspaces { id } => state.register_workspace(data_init.init(id, ())),
         };
     }
 }
@@ -94,4 +98,5 @@ macro_rules! delegate_magma_ipc {
 
 pub trait MagmaIpcHandler {
     fn active_workspace(&self) -> u32;
+    fn register_workspace(&mut self, workspace: Workspaces);
 }

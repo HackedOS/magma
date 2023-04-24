@@ -13,6 +13,8 @@ use smithay::{
     utils::{Logical, Point, Rectangle, Scale, Transform},
 };
 
+use crate::ipc::MagmaIpcManager;
+
 use super::{binarytree::BinaryTree, tiling::bsp_update_layout};
 
 #[derive(Debug, PartialEq, Clone)]
@@ -193,8 +195,9 @@ impl Workspaces {
             .find(|w| w.contains_window(window))
     }
 
-    pub fn activate(&mut self, id: u8) {
+    pub fn activate(&mut self, id: u8, magma_ipc_manager: &mut MagmaIpcManager) {
         self.current = id;
+        magma_ipc_manager.update_active_workspace(id.into());
     }
     pub fn move_window_to_workspace(&mut self, window: &Window, workspace: u8, gaps: (i32, i32)) {
         let mut removed = None;

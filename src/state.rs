@@ -217,4 +217,9 @@ impl<BackendData: Backend> MagmaIpcHandler for MagmaState<BackendData> {
     fn active_workspace(&self) -> u32 {
         self.workspaces.current.into()
     }
+
+    fn register_workspace(&mut self, workspace: crate::ipc::generated::workspaces::Workspaces) {
+        workspace.active_workspace(self.workspaces.current.into());
+        self.ipc_manager.workspace_handles.push(workspace);
+    }
 }

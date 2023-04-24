@@ -19,3 +19,11 @@ where
         
     }
 }
+
+impl MagmaIpcManager {
+    pub fn update_active_workspace(&mut self, id: u32) {
+        for workspace in dbg!(&self.workspace_handles).iter() {
+            workspace.active_workspace(id);
+        }
+    }
+}
