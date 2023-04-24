@@ -311,7 +311,7 @@ impl MagmaState<UdevData> {
             drm::DrmEvent::VBlank(crtc) => {
                 let device = self.backend_data.devices.get_mut(&node).unwrap();
                 let surface = device.surfaces.get_mut(&crtc).unwrap();
-                surface.compositor.frame_submitted().unwrap();
+                surface.compositor.frame_submitted().ok();
                 self.render(
                     node,
                     crtc,
@@ -457,13 +457,14 @@ impl MagmaState<UdevData> {
                     _dh: display.handle(),
                     _device_id: node,
                     render_node: device.render_node,
-                    _global: Some(global),
+                    global,
                     compositor,
                     dmabuf_feedback,
                     output: output.clone(),
                 };
                 
                 for workspace in self.workspaces.iter() {
+                    workspace.remove_outputs();
                     workspace.add_output(output.clone())
                 }
 
@@ -582,6 +583,10 @@ impl MagmaState<UdevData> {
                 .gpus
                 .as_mut()
                 .remove_node(&device.render_node);
+
+            for surface in device.surfaces.values() {           
+                self.dh.disable_global::<MagmaState<UdevData>>(surface.global.clone());
+            }
         }
     }
 }
@@ -590,7 +595,7 @@ pub struct Surface {
     _dh: DisplayHandle,
     _device_id: DrmNode,
     render_node: DrmNode,
-    _global: Option<GlobalId>,
+    global: GlobalId,
     compositor: GbmDrmCompositor,
     dmabuf_feedback: Option<DrmSurfaceDmabufFeedback>,
     output: Output,
