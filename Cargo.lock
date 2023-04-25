@@ -1128,7 +1128,7 @@ checksum = "a507befe795404456341dfab10cef66ead4c041f62b8b11bbb92bffe5d0953e0"
 [[package]]
 name = "smithay"
 version = "0.3.0"
-source = "git+https://github.com/Smithay/smithay.git#dd36639310f8529f366f5750cf10a86b8bf12eea"
+source = "git+https://github.com/Smithay/smithay.git#882ed48ecef1f9cd4cd10293c4638ac6763bde8d"
 dependencies = [
  "appendlist",
  "bitflags",
@@ -1187,7 +1187,7 @@ dependencies = [
 [[package]]
 name = "smithay-drm-extras"
 version = "0.1.0"
-source = "git+https://github.com/Smithay/smithay.git#dd36639310f8529f366f5750cf10a86b8bf12eea"
+source = "git+https://github.com/Smithay/smithay.git#882ed48ecef1f9cd4cd10293c4638ac6763bde8d"
 dependencies = [
  "drm",
  "edid-rs",
@@ -1301,13 +1301,13 @@ dependencies = [
 
 [[package]]
 name = "tracing-attributes"
-version = "0.1.23"
+version = "0.1.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4017f8f45139870ca7e672686113917c71c7a6e02d4924eda67186083c03081a"
+checksum = "0f57e3ca2a01450b1a921183a9c9cbfda207fd822cef4ccb00a65402cbba7a74"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 1.0.109",
+ "syn 2.0.15",
 ]
 
 [[package]]
