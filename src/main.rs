@@ -7,6 +7,7 @@ mod backends;
 mod config;
 mod handlers;
 mod input;
+mod ipc;
 mod state;
 mod utils;
 

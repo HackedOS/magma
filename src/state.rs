@@ -22,7 +22,7 @@ use smithay::{
 };
 use tracing::warn;
 
-use crate::{config::Config, utils::{workspaces::Workspaces, focus::FocusTarget}};
+use crate::{config::Config, utils::{workspaces::Workspaces, focus::FocusTarget}, ipc::{MagmaIpcManager, MagmaIpcHandler}, delegate_magma_ipc};
 
 pub struct CalloopData<BackendData: Backend + 'static> {
     pub state: MagmaState<BackendData>,
@@ -57,6 +57,8 @@ pub struct MagmaState<BackendData: Backend + 'static> {
     pub seat: Seat<Self>,
 
     pub pointer_location: Point<f64, Logical>,
+
+    pub ipc_manager: MagmaIpcManager,
 }
 
 impl<BackendData: Backend> MagmaState<BackendData> {
@@ -98,6 +100,8 @@ impl<BackendData: Backend> MagmaState<BackendData> {
 
         let socket_name = Self::init_wayland_listener(&mut loop_handle, display);
 
+        let ipc_manager = MagmaIpcManager::new::<Self>(&dh);
+
         Self {
             loop_handle,
             dh,
@@ -120,6 +124,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
             seat,
             pointer_location: Point::from((0.0, 0.0)),
             popup_manager: PopupManager::default(),
+            ipc_manager,
         }
     }
     fn init_wayland_listener(
@@ -204,4 +209,14 @@ pub struct ClientState;
 impl ClientData for ClientState {
     fn initialized(&self, _client_id: ClientId) {}
     fn disconnected(&self, _client_id: ClientId, _reason: DisconnectReason) {}
+}
+
+delegate_magma_ipc!(@<BackendData: Backend + 'static> MagmaState<BackendData>);
+
+impl<BackendData: Backend> MagmaIpcHandler for MagmaState<BackendData> {
+    fn register_workspace(&mut self, workspace: crate::ipc::generated::workspaces::Workspaces) {
+        self.ipc_manager.workspace_handles.push(workspace);
+        self.ipc_manager.update_active_workspace(self.workspaces.current.into());
+        self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
+    }
 }

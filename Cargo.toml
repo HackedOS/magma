@@ -12,6 +12,8 @@ xdg = "^2.1"
 tracing = "0.1.37"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 smithay-drm-extras = { git = "https://github.com/Smithay/smithay.git"}
+wayland-scanner = "0.30.0"
+wayland-backend = "0.1.2"
 
 [dependencies.smithay]
 git = "https://github.com/Smithay/smithay.git"
@@ -26,4 +28,9 @@ features = [
     "backend_gbm",
     "backend_udev",
     "backend_libinput",
+]
+
+[workspace]
+members = [
+    "magma-ipc",
 ]

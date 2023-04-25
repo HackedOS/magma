@@ -19,7 +19,8 @@ impl<BackendData: Backend> MagmaState<BackendData> {
                     d.0.toplevel().send_close()
                 }
             }
-            Action::Workspace(id) => {self.workspaces.activate(id);
+            Action::Workspace(id) => {
+            self.workspaces.activate(id, &mut self.ipc_manager);
             self.set_input_focus_auto();
             },
             Action::MoveWindowToWorkspace(id) => {
@@ -33,6 +34,7 @@ impl<BackendData: Backend> MagmaState<BackendData> {
                     self.workspaces
                         .move_window_to_workspace(&window, id, self.config.gaps);
                 }
+                self.ipc_manager.update_occupied_workspaces(&mut self.workspaces);
             }
             Action::MoveWindowAndSwitchToWorkspace(u8) => {
                 self.handle_action(Action::MoveWindowToWorkspace(u8));

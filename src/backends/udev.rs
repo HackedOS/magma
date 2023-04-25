@@ -17,7 +17,7 @@ use smithay::{
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles::{GlesRenderer, GlesTexture},
-            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma, self, Bind, Renderer, Offscreen, Frame, utils, BufferType, ExportMem,
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma, self, Bind,  Offscreen, BufferType, ExportMem,
         },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{self, UdevBackend, UdevEvent}, SwapBuffersError,
@@ -696,20 +696,21 @@ impl MagmaState<UdevData> {
                 }),
         );
         
-        let rendered = surface.compositor
+        let frame_result = surface.compositor
             .render_frame::<_, _, GlesTexture>(
                 &mut renderer,
                 &renderelements,
                 [0.1, 0.1, 0.1, 1.0],
             )
-            .unwrap().damage.is_some();
+            .unwrap();
         
         // Copy framebuffer for screencopy.
         if let Some(mut screencopy) = screencopy {
             // Mark entire buffer as damaged.
             let region = screencopy.region();
-            let damage = [Rectangle::from_loc_and_size((0, 0), region.size)];
-            screencopy.damage(&damage);
+            if let Some(damage) = frame_result.damage.clone() {
+                screencopy.damage(&damage);    
+            }
 
             let shm_buffer = screencopy.buffer();
 
@@ -732,16 +733,8 @@ impl MagmaState<UdevData> {
                 // Calculate drawing area after output transform.
                 let damage = transform.transform_rect_in(region, &output_size);
 
-
-                // Initialize the buffer to our clear color.
-                let mut frame = renderer.render(output_size, transform).unwrap();
-                frame.clear([0.1, 0.1, 0.1, 1.0], &[damage]).unwrap();
-
-                // Render everything to the offscreen buffer.
-                utils::draw_render_elements(&mut frame, scale, &renderelements, &[damage]).unwrap();
-
-                // Ensure rendering was fully completed.
-                frame.finish().unwrap();
+                frame_result.blit_frame_result(damage.size, transform, scale, &mut renderer, [damage], []).unwrap();
+                
                 let region = Rectangle { loc: Point::from((region.loc.x, region.loc.y)), size: Size::from((region.size.w, region.size.h)) };
                 let mapping = renderer.copy_framebuffer(region, Fourcc::Argb8888).unwrap();
                 let buffer = renderer.map_texture(&mapping);
@@ -765,8 +758,8 @@ impl MagmaState<UdevData> {
 
                 // Mark screencopy frame as successful.
                 screencopy.submit();
-            }
-
+        }
+        let rendered = frame_result.damage.is_some();
         let mut result = Ok(rendered);
         if rendered {
             let queueresult = surface.compositor.queue_frame(()).map_err(Into::<SwapBuffersError>::into);

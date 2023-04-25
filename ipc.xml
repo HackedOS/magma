@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<protocol name="magma">
+    <description summary="Magma's IPC Protocol">This is the protocol defenition for Magma's IPC, it is intended to be used with a wrapper</description>
+    <copyright>
+    HackOS © 2023
+    </copyright>
+
+    <interface name="magma_ipc" version="1">
+        <request name="workspaces">
+            <description summary = "subscribe to workspace events">subscribe to workspace events</description>
+            <arg name="id" type="new_id" interface="workspaces"/>
+        </request>
+    </interface>
+
+
+    <interface name="workspaces" version="1">
+        <event name="active_workspace">
+            <description summary = "active workspace changed">active workspace changed</description>
+            <arg name="id" type="uint" summary="workspace id"/>
+        </event>
+        <event name="occupied_workspaces">
+            <description summary = "workspace occupation changed">occupied workspaces changed</description>
+            <arg name="occupied" type="array" summary="occupied workspaces"/>
+        </event>
+    </interface>
+
+</protocol>
