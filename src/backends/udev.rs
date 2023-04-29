@@ -17,7 +17,7 @@ use smithay::{
         renderer::{
             element::{texture::{TextureBuffer, TextureRenderElement}, surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles::{GlesRenderer, GlesTexture},
-            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer}, ImportDma, self, Bind,  Offscreen, BufferType, ExportMem,
+            multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer, MultiTexture}, ImportDma, self, Bind,  Offscreen, BufferType, ExportMem,
         },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{self, UdevBackend, UdevEvent}, SwapBuffersError,
@@ -456,6 +456,18 @@ impl MagmaState<UdevData> {
         
                 ).unwrap();
 
+                let pointer_texture = TextureBuffer::from_memory(
+                    &mut renderer,
+                    CURSOR_DATA,
+                    Fourcc::Abgr8888,
+                    (64, 64),
+                    false,
+                    1,
+                    Transform::Normal,
+                    None,
+                )
+                .unwrap();
+
                 let dmabuf_feedback = get_surface_dmabuf_feedback(
                     self.backend_data.primary_gpu,
                     device.render_node,
@@ -471,6 +483,7 @@ impl MagmaState<UdevData> {
                     compositor,
                     dmabuf_feedback,
                     output: output.clone(),
+                    pointer_texture,
                 };
                 
                 for workspace in self.workspaces.iter() {
@@ -609,6 +622,7 @@ pub struct Surface {
     compositor: GbmDrmCompositor,
     dmabuf_feedback: Option<DrmSurfaceDmabufFeedback>,
     output: Output,
+    pointer_texture: TextureBuffer<MultiTexture>,
 }
 
 impl MagmaState<UdevData> {
@@ -626,22 +640,10 @@ impl MagmaState<UdevData> {
 
         let mut renderelements: Vec<CustomRenderElements<MultiRenderer<_,_>>> = vec![];
 
-        let pointer_texture = TextureBuffer::from_memory(
-            &mut renderer,
-            CURSOR_DATA,
-            Fourcc::Abgr8888,
-            (64, 64),
-            false,
-            1,
-            Transform::Normal,
-            None,
-        )
-        .unwrap();
-
         renderelements.append(&mut vec![CustomRenderElements::<MultiRenderer<_,_>>::from(
             TextureRenderElement::from_texture_buffer(
                 self.pointer_location.to_physical(Scale::from(1.0)),
-                &pointer_texture,
+                &surface.pointer_texture,
                 None,
                 None,
                 None,
