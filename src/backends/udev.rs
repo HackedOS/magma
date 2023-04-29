@@ -261,7 +261,7 @@ pub fn init_udev() {
     let mut calloopdata = CalloopData { state, display };
 
     std::env::set_var("WAYLAND_DISPLAY", &calloopdata.state.socket_name);
-
+    calloopdata.state.config.autostart.push("dbus-update-activation-environment --all".to_string());
     for command in &calloopdata.state.config.autostart {
         if let Err(err) = std::process::Command::new("/bin/sh")
         .arg("-c")
